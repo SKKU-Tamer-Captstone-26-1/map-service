@@ -26,6 +26,7 @@ docs/integrations/             External API policy notes
 docs/research/                 Public/open data source research drafts
 docs/runbooks/                 Local operational runbooks
 data/bootstrap/                Research-only bootstrap CSV drafts
+data/samples/                  Synthetic public-data-shaped sample fixtures
 docs/handoff/                  Handoff docs for map_view and legacy map/place drafts
 map_view.dbml                  Source of truth for the minimal map_view ERD
 map_view.md                    Korean explanation of the minimal map_view design
@@ -76,6 +77,22 @@ python3 scripts/bootstrap/validate_research_package.py
 ```
 
 This command does not call external APIs and does not write to the database.
+
+Dry-run normalize a local sample file into candidate JSON:
+
+```bash
+python3 scripts/bootstrap/normalize_public_data_sample.py \
+  --source-name "소상공인시장진흥공단_상가(상권)정보_API" \
+  --input data/samples/smba_store_sample.csv
+```
+
+```bash
+python3 scripts/bootstrap/normalize_public_data_sample.py \
+  --source-name "행정안전부_식품_일반음식점 조회서비스" \
+  --input data/samples/mois_food_general_sample.csv
+```
+
+The sample normalizer reads local fixture CSVs only. It does not call external APIs, does not write to the database, and does not create canonical places.
 
 ## Data Bootstrap Direction
 

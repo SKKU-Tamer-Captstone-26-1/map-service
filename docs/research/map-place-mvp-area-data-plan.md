@@ -60,3 +60,29 @@
 2. 공개 데이터 sample 파일을 로컬에서 파싱하는 dry-run normalizer
 3. 좌표계 변환과 bounding box 검증 유틸
 4. 후보 staging schema는 `map_view` 밖에서 별도 승인 후 설계
+
+## 현재 Dry-Run Commands
+
+정책 CSV 검증:
+
+```bash
+python3 scripts/bootstrap/validate_research_package.py
+```
+
+소상공인 상가정보 sample normalization:
+
+```bash
+python3 scripts/bootstrap/normalize_public_data_sample.py \
+  --source-name "소상공인시장진흥공단_상가(상권)정보_API" \
+  --input data/samples/smba_store_sample.csv
+```
+
+행정안전부 일반음식점 sample normalization:
+
+```bash
+python3 scripts/bootstrap/normalize_public_data_sample.py \
+  --source-name "행정안전부_식품_일반음식점 조회서비스" \
+  --input data/samples/mois_food_general_sample.csv
+```
+
+위 명령들은 외부 API 호출과 DB write를 하지 않습니다.

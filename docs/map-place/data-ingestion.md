@@ -50,3 +50,28 @@ python3 scripts/bootstrap/validate_research_package.py
 ```
 
 It does not call external APIs, write DB rows, or create canonical places.
+
+The next dry-run layer normalizes synthetic local sample files into candidate JSON:
+
+```bash
+python3 scripts/bootstrap/normalize_public_data_sample.py \
+  --source-name "소상공인시장진흥공단_상가(상권)정보_API" \
+  --input data/samples/smba_store_sample.csv
+```
+
+```bash
+python3 scripts/bootstrap/normalize_public_data_sample.py \
+  --source-name "행정안전부_식품_일반음식점 조회서비스" \
+  --input data/samples/mois_food_general_sample.csv
+```
+
+The sample files under `data/samples/` are synthetic fixtures shaped like official source schemas. They are not production data.
+
+The normalizer enforces source registry policy before emitting candidates:
+
+- `storage_policy` must be `storable`
+- `default_target` must be `place_import_candidates`
+- `canonical_use_allowed` must be `false`
+- Kakao sources are rejected
+
+행정안전부 인허가 sample rows keep EPSG:5174 source coordinates in metadata and emit `location_status=needs_coordinate_transform`. Those rows must not be published until a WGS84 transform and location quality check are added.
