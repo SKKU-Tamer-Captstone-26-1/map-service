@@ -13,6 +13,20 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 
 따라서 아래 출처는 `map_view`에 직접 적재하지 않습니다. 공개 데이터는 먼저 후보 staging인 `place_import_candidates` 성격으로 들어가야 하며, canonical place 또는 marker publish는 별도 review/publish workflow 이후에만 가능합니다.
 
+## Approved Development API Access
+
+사용자가 2026-05-22에 아래 공공데이터포털 개발계정 활용신청 승인을 확인했습니다. 만료예정일은 2028-05-22입니다.
+
+| Source | Approval Scope | Default Target |
+|---|---|---|
+| 소상공인시장진흥공단_상가(상권)정보_API | 개발계정 승인 | `place_import_candidates` |
+| 행정안전부_식품_일반음식점 조회서비스 | 개발계정 승인 | `place_import_candidates` |
+| 행정안전부_식품_휴게음식점 조회서비스 | 개발계정 승인 | `place_import_candidates` |
+| 행정안전부_식품_단란주점영업 조회서비스 | 개발계정 승인 | `excluded` |
+| 행정안전부_식품_유흥주점영업 조회서비스 | 개발계정 승인 | `excluded` |
+
+승인은 API 호출 권한입니다. canonical 저장, 자동 승인, marker publish 승인으로 해석하지 않습니다.
+
 ## 1순위 후보 출처
 
 ### 소상공인시장진흥공단 상가(상권)정보 API
@@ -24,6 +38,7 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 - 라이선스/이용허락: 이용허락범위 제한 없음
 - 비용: 무료
 - 업데이트: 실시간
+- API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
 - 기본 target: `place_import_candidates`
 - 판단: 서울 MVP 후보 POI의 primary evidence로 적합합니다.
 
@@ -42,6 +57,7 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 - 비용: 무료
 - 업데이트: 일간
 - 좌표계: 보정계수 없는 Bessel 중부원점 TM, EPSG:5174로 안내됨
+- API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
 - 기본 target: `place_import_candidates`
 - 판단: `restaurant` 후보와 일부 `pub` 후보의 보조 근거로 적합합니다.
 
@@ -60,6 +76,7 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 - 비용: 무료
 - 업데이트: 일간
 - 좌표계: 보정계수 없는 Bessel 중부원점 TM, EPSG:5174로 안내됨
+- API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
 - 기본 target: `place_import_candidates`
 - 판단: 카페/패스트푸드/간편식 계열 후보의 보조 근거로만 사용합니다.
 
@@ -80,16 +97,31 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 - 조사 시점의 텍스트 화면에서 이용허락 필드를 명확히 확인하지 못했습니다.
 - 구현 전 개별 다운로드/API 화면의 이용허락 필드를 재확인해야 합니다.
 
-### 행정안전부 단란주점/유흥주점 데이터
+### 행정안전부 단란주점영업 조회서비스
 
-- 예시 URL: https://www.data.go.kr/data/15045017/fileData.do
+- 추적 URL: https://www.data.go.kr/data/15045017/fileData.do
+- API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
 - 라이선스/이용허락: 이용허락범위 제한 없음으로 확인되는 데이터가 있음
 - 기본 target: `excluded`
-- 판단: 데이터 저장 가능 여부와 별개로 adult/nightlife product policy 리스크가 큽니다.
+- 판단: 데이터 저장 가능 여부와 별개로 product policy 리스크가 큽니다.
 
 주의사항:
 - 기본적으로 canonical 후보로 쓰지 않습니다.
 - 필요한 경우 별도 정책/법무 검토 후 `needs_review`로만 다룹니다.
+- 공공데이터포털 승인 화면의 정확한 OpenAPI 상세 URL은 구현 전 캡처합니다.
+
+### 행정안전부 유흥주점영업 조회서비스
+
+- 추적 URL: https://www.data.go.kr/data/15045018/fileData.do
+- API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
+- 라이선스/이용허락: 이용허락범위 제한 없음으로 확인되는 데이터가 있음
+- 기본 target: `excluded`
+- 판단: adult nightlife product policy 리스크가 커서 기본 제외합니다.
+
+주의사항:
+- 기본적으로 canonical 후보로 쓰지 않습니다.
+- 필요한 경우 별도 정책/법무 검토 후 `needs_review`로만 다룹니다.
+- 공공데이터포털 승인 화면의 정확한 OpenAPI 상세 URL은 구현 전 캡처합니다.
 
 ### Kakao Local/Map API
 

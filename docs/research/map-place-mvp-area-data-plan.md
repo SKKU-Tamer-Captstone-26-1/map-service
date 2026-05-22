@@ -12,7 +12,7 @@
 2. 소상공인시장진흥공단 상가정보 API에서 후보 POI를 조회합니다.
 3. 행정안전부 일반음식점/휴게음식점 데이터로 영업상태와 주소 근거를 보강합니다.
 4. 도시공원 데이터는 라이선스 재확인 후 `outdoor_spot` 후보로 별도 처리합니다.
-5. 단란주점/유흥주점 계열은 기본 제외합니다.
+5. 승인된 단란주점영업/유흥주점영업 API는 기본 제외합니다.
 6. Kakao Local API는 저장하지 않고 운영자 실시간 검증 보조로만 사용합니다.
 
 ## 서울 MVP Source Plan
@@ -24,6 +24,7 @@
 | 3 | 행안부 휴게음식점 | `place_import_candidates` | 카페/간편식 보조 후보 |
 | 4 | 전국도시공원정보표준데이터 | `needs_review` then candidates | 야외 장소 후보 |
 | 5 | Kakao Local API | `realtime_lookup` | 운영자 검증 보조 |
+| 6 | 행안부 단란주점영업/유흥주점영업 | `excluded` | API 승인됨, product/legal review 전 제외 |
 
 ## Download/API Plan
 

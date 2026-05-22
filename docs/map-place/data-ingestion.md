@@ -39,7 +39,20 @@ The following are not allowed:
 | 행안부 일반음식점/휴게음식점 | `storable` | `place_import_candidates` |
 | 전국도시공원정보표준데이터 | `unknown_needs_review` | `needs_review` |
 | Kakao Local API | `realtime_only` | `realtime_lookup` |
-| 단란주점/유흥주점 | `storable` source, product risk | `excluded` |
+| 행안부 단란주점영업 | `storable` source, product risk | `excluded` |
+| 행안부 유흥주점영업 | `storable` source, adult nightlife risk | `excluded` |
+
+## Approved API Access
+
+사용자가 2026-05-22에 아래 공공데이터포털 개발계정 활용신청 승인을 확인했습니다. 만료예정일은 2028-05-22입니다.
+
+- 소상공인시장진흥공단_상가(상권)정보_API
+- 행정안전부_식품_일반음식점 조회서비스
+- 행정안전부_식품_휴게음식점 조회서비스
+- 행정안전부_식품_단란주점영업 조회서비스
+- 행정안전부_식품_유흥주점영업 조회서비스
+
+승인은 API 호출 권한입니다. `map_view` 적재, canonical place 생성, 자동 승인, marker publish 권한으로 해석하지 않습니다.
 
 ## First Safe Implementation Later
 

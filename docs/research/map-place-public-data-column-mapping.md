@@ -69,7 +69,8 @@
 | 소상공인 업종 contains `주점` or `바` | `needs_review` | low | 성인/일반 주점 혼재 |
 | 행안부 일반음식점 업태 in `한식`, `중식`, `일식`, `경양식` | `restaurant` | medium | 영업상태 정상만 |
 | 행안부 휴게음식점 | `restaurant` or `other` | low | 서비스 정책에 맞춰 재검토 |
-| 행안부 단란주점/유흥주점 | `excluded` | high | adult/nightlife risk |
+| 행안부 단란주점영업 | `excluded` | high | API access approved, product policy review required |
+| 행안부 유흥주점영업 | `excluded` | high | API access approved, adult nightlife policy review required |
 | 도시공원 공원구분 exists | `outdoor_spot` | medium | 라이선스 재확인 후 |
 
 ## Quality Checks

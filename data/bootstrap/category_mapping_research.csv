@@ -5,6 +5,7 @@ source_name,source_category_pattern,target_category,confidence,review_required,n
 행정안전부_식품_일반음식점 조회서비스,업태구분명 in 한식|중식|일식|경양식,restaurant,medium,true,Use only active/open business status
 행정안전부_식품_일반음식점 조회서비스,업태구분명 contains 호프 or 통닭,pub,low,true,Could be restaurant or pub; review before publish
 행정안전부_식품_휴게음식점 조회서비스,업태구분명 contains 카페 or 다류,other,low,true,Not core place category unless product scope expands
-행정안전부_식품_단란주점영업_유흥주점영업,any,excluded,high,true,Adult/nightlife policy risk
+행정안전부_식품_단란주점영업 조회서비스,any,excluded,high,true,Approved API access but excluded by product policy until separate review
+행정안전부_식품_유흥주점영업 조회서비스,any,excluded,high,true,Approved API access but excluded by adult nightlife policy until separate review
 전국도시공원정보표준데이터,공원구분 exists,outdoor_spot,medium,true,Use after source license reconfirmation
 Kakao Local API,any,realtime_lookup,none,true,Do not persist as canonical category evidence

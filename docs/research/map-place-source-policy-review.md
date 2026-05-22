@@ -24,6 +24,20 @@ Kakao -> realtime_only
 
 ## Source Findings
 
+### 승인된 공공데이터포털 개발 API
+
+사용자가 2026-05-22에 아래 개발계정 활용신청 승인을 확인했습니다. 만료예정일은 2028-05-22입니다.
+
+| Source | Storage Policy | Canonical Use | Default Target |
+|---|---|---:|---|
+| 소상공인시장진흥공단_상가(상권)정보_API | `storable` | No | `place_import_candidates` |
+| 행정안전부_식품_일반음식점 조회서비스 | `storable` | No | `place_import_candidates` |
+| 행정안전부_식품_휴게음식점 조회서비스 | `storable` | No | `place_import_candidates` |
+| 행정안전부_식품_단란주점영업 조회서비스 | `storable` | No | `excluded` |
+| 행정안전부_식품_유흥주점영업 조회서비스 | `storable` | No | `excluded` |
+
+API 활용 승인은 호출 권한과 quota 전제일 뿐입니다. canonical place 저장, 자동 승인, marker publish, product policy 승인을 의미하지 않습니다.
+
 ### 공공데이터포털 공통 정책
 
 - URL: https://www.data.go.kr/ugs/selectPortalPolicyView.do
