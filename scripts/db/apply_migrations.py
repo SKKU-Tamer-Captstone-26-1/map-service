@@ -11,6 +11,12 @@ import psycopg
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MIGRATIONS_DIR = REPO_ROOT / "migrations"
+DEFAULT_MIGRATION_SET = "map-view"
+
+MIGRATION_SETS = {
+    "map-view": ("007_create_map_view_minimal_schema.sql",),
+    "legacy-full": None,
+}
 
 
 def resolve_database_url(explicit_url: str | None) -> str:
@@ -34,15 +40,31 @@ def mask_database_url(database_url: str) -> str:
     return database_url.replace(password, "***")
 
 
-def migration_files(migrations_dir: Path) -> list[Path]:
-    files = sorted(migrations_dir.glob("*.sql"))
+def migration_files(migrations_dir: Path, migration_set: str) -> list[Path]:
+    migration_names = MIGRATION_SETS[migration_set]
+    if migration_names is None:
+        files = sorted(migrations_dir.glob("*.sql"))
+    else:
+        files = [migrations_dir / name for name in migration_names]
+
     if not files:
         raise RuntimeError(f"no migration files found in {migrations_dir}")
+
+    missing_files = [path.name for path in files if not path.is_file()]
+    if missing_files:
+        raise RuntimeError(f"missing migration files in {migrations_dir}: {missing_files}")
+
     return files
 
 
-def apply_migrations(database_url: str, migrations_dir: Path, *, dry_run: bool = False) -> list[str]:
-    files = migration_files(migrations_dir)
+def apply_migrations(
+    database_url: str,
+    migrations_dir: Path,
+    *,
+    migration_set: str = DEFAULT_MIGRATION_SET,
+    dry_run: bool = False,
+) -> list[str]:
+    files = migration_files(migrations_dir, migration_set)
     if dry_run:
         return [path.name for path in files]
 
@@ -60,9 +82,19 @@ def print_report(report: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Apply SQL migrations to a local/dev map_view PostGIS database.")
+    parser = argparse.ArgumentParser(description="Apply SQL migrations to a local/dev map-service PostGIS database.")
     parser.add_argument("--database-url", help="PostgreSQL connection URL. Defaults to DATABASE_URL or local .env defaults.")
     parser.add_argument("--migrations-dir", type=Path, default=DEFAULT_MIGRATIONS_DIR)
+    parser.add_argument(
+        "--migration-set",
+        choices=sorted(MIGRATION_SETS),
+        default=DEFAULT_MIGRATION_SET,
+        help=(
+            "Migration set to apply. Defaults to map-view, which replays only the minimal "
+            "read-model schema. Use legacy-full only when intentionally replaying old public "
+            "place/admin/import tables."
+        ),
+    )
     parser.add_argument("--dry-run", action="store_true", help="List migration files without writing to the database.")
     args = parser.parse_args()
 
@@ -70,7 +102,14 @@ def main() -> None:
     report = {
         "database_url": mask_database_url(database_url),
         "dry_run": args.dry_run,
-        "migrations": apply_migrations(database_url, args.migrations_dir, dry_run=args.dry_run),
+        "migration_set": args.migration_set,
+        "migrations_dir": str(args.migrations_dir),
+        "migrations": apply_migrations(
+            database_url,
+            args.migrations_dir,
+            migration_set=args.migration_set,
+            dry_run=args.dry_run,
+        ),
     }
     print_report(report)
 

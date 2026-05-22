@@ -19,6 +19,13 @@ This repository is being cleaned around the minimal `map_view` direction. Legacy
 ```text
 migrations/                    PostgreSQL schema migrations, including additive map_view migration
 scripts/db/                    Local DB apply/verify helpers
+docs/README.md                 Docs index
+docs/architecture.md           Service/database boundary overview
+docs/map-place/                Map/place ownership, DB, ERD, ingestion boundary
+docs/integrations/             External API policy notes
+docs/research/                 Public/open data source research drafts
+docs/runbooks/                 Local operational runbooks
+data/bootstrap/                Research-only bootstrap CSV drafts
 docs/handoff/                  Handoff docs for map_view and legacy map/place drafts
 map_view.dbml                  Source of truth for the minimal map_view ERD
 map_view.md                    Korean explanation of the minimal map_view design
@@ -30,20 +37,51 @@ Some legacy migration files can still exist until DB history is explicitly rebas
 
 ```bash
 cp .env.example .env
+python3 -m pip install -r requirements.txt
 docker compose -f docker-compose.db.yml up -d db
 python3 scripts/db/apply_migrations.py
-python3 scripts/db/verify_map_view_schema.py
-```
-
-`apply_migrations.py` applies SQL files in lexical order and does not keep migration metadata. Use a clean local/dev database for full replay until a proper migration runner is introduced.
-
-Strict clean check:
-
-```bash
 python3 scripts/db/verify_map_view_schema.py --strict-clean-db
 ```
 
-`--strict-clean-db` should pass on a clean map_view-only database. It will fail on an older local DB if oversized public tables were already applied.
+`apply_migrations.py` defaults to the `map-view` migration set. That set applies only the minimal read-model migration:
+
+```text
+migrations/007_create_map_view_minimal_schema.sql
+```
+
+This is the expected clean local/dev path. It does not apply the older public place/admin/import migrations.
+
+Dry-run the default path:
+
+```bash
+python3 scripts/db/apply_migrations.py --dry-run
+```
+
+The old full replay is still available only when explicitly requested:
+
+```bash
+python3 scripts/db/apply_migrations.py --migration-set legacy-full --dry-run
+```
+
+`legacy-full` replays all files under `migrations/` in lexical order and will create deprecated public place/admin/import tables. Use it only for historical investigation until a proper migration runner or rebaseline is introduced.
+
+`--strict-clean-db` should pass on a clean `map_view`-only database. It will fail on an older local DB if oversized public tables were already applied. See [docs/runbooks/local-db-rebaseline.md](docs/runbooks/local-db-rebaseline.md) before any local reset.
+
+## Bootstrap Research Validation
+
+Validate the research-only source policy CSVs:
+
+```bash
+python3 scripts/bootstrap/validate_research_package.py
+```
+
+This command does not call external APIs and does not write to the database.
+
+## Data Bootstrap Direction
+
+Research artifacts under `docs/research/` and `data/bootstrap/` are proposals only. Public/open data can enter candidate staging for later admin review, but must not be inserted directly into canonical places or `map_view`.
+
+Kakao Local/Map API data is `realtime_only` unless separate legal or partnership approval is documented. Do not bulk-ingest Kakao API responses as canonical or storable place data.
 
 ## Safety Notes
 
@@ -52,5 +90,7 @@ python3 scripts/db/verify_map_view_schema.py --strict-clean-db
 - Do not create a DB FK from `map_view.markers.place_ref` to `admin_ops.places.id`.
 - Do not drop or reset legacy tables until local/dev cleanup is explicitly approved.
 - Do not bulk-ingest Kakao Local/Map API data as canonical place data.
+- Do not insert public/open data directly into `map_view`.
+- Do not publish markers without an explicit reviewed canonical source.
 - Do not let Admin Page write directly to the database.
 - Do not let recommendation-service directly read or write map-service tables.

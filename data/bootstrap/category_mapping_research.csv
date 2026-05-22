@@ -1,0 +1,10 @@
+source_name,source_category_pattern,target_category,confidence,review_required,notes
+소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 편의점,convenience_store,medium,true,Candidate only; verify active business and location
+소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 맥주 or 호프,pub,low,true,Operator review required; not enough for canonical pub
+소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 주점 or 바,needs_review,low,true,Adult/general categories may be mixed
+행정안전부_식품_일반음식점 조회서비스,업태구분명 in 한식|중식|일식|경양식,restaurant,medium,true,Use only active/open business status
+행정안전부_식품_일반음식점 조회서비스,업태구분명 contains 호프 or 통닭,pub,low,true,Could be restaurant or pub; review before publish
+행정안전부_식품_휴게음식점 조회서비스,업태구분명 contains 카페 or 다류,other,low,true,Not core place category unless product scope expands
+행정안전부_식품_단란주점영업_유흥주점영업,any,excluded,high,true,Adult/nightlife policy risk
+전국도시공원정보표준데이터,공원구분 exists,outdoor_spot,medium,true,Use after source license reconfirmation
+Kakao Local API,any,realtime_lookup,none,true,Do not persist as canonical category evidence
