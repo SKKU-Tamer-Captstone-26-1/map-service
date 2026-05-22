@@ -88,3 +88,28 @@ The normalizer enforces source registry policy before emitting candidates:
 - Kakao sources are rejected
 
 행정안전부 인허가 sample rows keep EPSG:5174 source coordinates in metadata and emit `location_status=needs_coordinate_transform`. Those rows must not be published until a WGS84 transform and location quality check are added.
+
+## Real Dry-Run Fetch
+
+The first real fetch path is limited to the approved 소상공인 상가정보 API.
+
+```bash
+python3 scripts/bootstrap/fetch_public_data_dry_run.py \
+  --source-name "소상공인시장진흥공단_상가(상권)정보_API" \
+  --div-id signguCd \
+  --area-key 11440 \
+  --inds-lcls-cd I2 \
+  --num-rows 10
+```
+
+`I2` was confirmed against the approved API on 2026-05-22 as the large industry code for `음식`.
+
+Requirements:
+
+- `DATA_GO_KR_SERVICE_KEY` must be set in local `.env` or passed via `--service-key`
+- real keys must not be committed
+- generated raw output goes to ignored `data/raw/`
+- generated normalized candidate output goes to ignored `data/normalized/`
+- no DB writes, canonical place writes, or marker publishes occur
+
+행정안전부 APIs are approved but remain blocked from real fetch implementation until their exact 공공데이터포털 API operation URLs are captured and EPSG:5174 conversion is added.

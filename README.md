@@ -94,6 +94,19 @@ python3 scripts/bootstrap/normalize_public_data_sample.py \
 
 The sample normalizer reads local fixture CSVs only. It does not call external APIs, does not write to the database, and does not create canonical places.
 
+Fetch a small real public-data page into ignored dry-run files:
+
+```bash
+python3 scripts/bootstrap/fetch_public_data_dry_run.py \
+  --source-name "소상공인시장진흥공단_상가(상권)정보_API" \
+  --div-id signguCd \
+  --area-key 11440 \
+  --inds-lcls-cd I2 \
+  --num-rows 10
+```
+
+`I2` is the confirmed 소상공인 large industry code for `음식`. The fetcher writes raw responses under `data/raw/` and normalized candidate JSON under `data/normalized/`. Both directories are ignored by Git. It does not write to PostGIS and does not publish markers.
+
 ## Data Bootstrap Direction
 
 Research artifacts under `docs/research/` and `data/bootstrap/` are proposals only. Public/open data can enter candidate staging for later admin review, but must not be inserted directly into canonical places or `map_view`.
