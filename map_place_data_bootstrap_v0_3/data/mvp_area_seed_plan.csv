@@ -1,7 +1,0 @@
-﻿priority,area_name,admin_dong_or_notes,target_count,place_types,reason
-P0,홍대/연남/합정,마포구 중심,50-100,"bar,pub,bottle_shop,liquor_shop","술집/바/보틀샵 밀도 높음, 초기 사용자 경험 좋음"
-P0,이태원/한남,용산구 중심,30-80,"bar,pub,restaurant",위스키/칵테일/와인바 후보 많음
-P0,강남/신논현/압구정,강남구/서초구 일부,50-100,"bar,pub,bottle_shop,liquor_shop",가격/거리/선호 추천 테스트에 적합
-P1,성수/건대/뚝섬,성동구/광진구,30-70,"bar,pub,outdoor_spot",뚝섬한강공원 및 성수 상권 연계
-P1,을지로/종로,중구/종로구,30-70,"bar,pub,restaurant",노포/펍/바 혼합
-P1,여의도/한강 인근,영등포구,20-50,"outdoor_spot,convenience_store,liquor_shop",야외 장소 + 구매 후보 추천 테스트

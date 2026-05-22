@@ -1,0 +1,87 @@
+Project map_view_minimal_erd_v0_8 {
+  database_type: 'PostgreSQL'
+  Note: '''
+  Minimal map read-model ERD for On the Block.
+
+  map_view is not the canonical owner of place details.
+  Admin/Place operations own business data, owner requests, approvals, menu, inventory, price, and operating hours.
+
+  map_view stores only approved/published marker data needed by the map UI and downstream cache/sync consumers.
+  '''
+}
+
+Enum marker_visibility_state {
+  visible
+  hidden
+}
+
+Enum marker_publication_event_type {
+  marker_published
+  marker_hidden
+  marker_moved
+  marker_layer_changed
+  marker_deleted
+}
+
+Table map_view.marker_layers {
+  code varchar [pk, note: 'Stable layer code such as bar, pub, liquor_shop, outdoor_spot.']
+  label_ko varchar [not null]
+  label_en varchar
+  icon_key varchar [not null]
+  display_order int [not null, default: 0]
+  default_visible boolean [not null, default: true]
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (display_order) [name: 'idx_marker_layers_display_order']
+    (is_active) [name: 'idx_marker_layers_active']
+  }
+}
+
+Table map_view.markers {
+  id uuid [pk]
+
+  place_ref uuid [not null, unique, note: 'Reference to the canonical admin/place record. Prefer no DB FK if map_view may be split later.']
+  layer_code varchar [not null, ref: > map_view.marker_layers.code]
+
+  label varchar [not null, note: 'Published label copied from admin/place data. Map UI can read it, but cannot edit it.']
+  location geography [not null, note: 'PostGIS geography(Point,4326). Create GiST index in SQL migration.']
+  geohash varchar
+
+  icon_key varchar [note: 'Optional per-marker icon override. If null, use marker_layers.icon_key.']
+  visibility marker_visibility_state [not null, default: 'visible']
+
+  filter_json jsonb [not null, default: '{}', note: 'Approved lightweight map filter flags only. Example: {"has_signature_menu": true, "price_band": 3}. No admin workflow state.']
+
+  published_revision bigint [not null, note: 'Revision of the approved admin/place publish that produced this marker.']
+  published_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (layer_code, visibility) [name: 'idx_markers_layer_visibility']
+    (geohash) [name: 'idx_markers_geohash']
+    (published_revision) [name: 'idx_markers_published_revision']
+  }
+}
+
+Table map_view.marker_publication_events {
+  id uuid [pk]
+
+  event_type marker_publication_event_type [not null]
+  marker_id uuid [ref: > map_view.markers.id]
+  place_ref uuid [not null]
+  published_revision bigint [not null]
+
+  payload_json jsonb [not null, default: '{}', note: 'Small event payload for recommendation snapshot sync or cache invalidation.']
+
+  created_at timestamptz [not null]
+  consumed_at timestamptz
+
+  indexes {
+    (created_at) [name: 'idx_marker_events_created_at']
+    (consumed_at) [name: 'idx_marker_events_consumed_at']
+    (place_ref, published_revision) [name: 'idx_marker_events_place_revision']
+  }
+}

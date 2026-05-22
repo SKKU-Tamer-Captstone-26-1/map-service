@@ -1,0 +1,435 @@
+Project admin_ops_aligned_to_map_view_v0_8 {
+  database_type: "PostgreSQL"
+  note: "Admin/Place canonical operations ERD aligned with map_view_minimal_erd_v0_8. Admin owns business/place details and approval workflow. map_view stores only published marker read model."
+}
+
+Enum admin_place_type {
+  bar
+  pub
+  liquor_shop
+  bottle_shop
+  restaurant
+  outdoor_spot
+  convenience_store
+  other
+}
+
+Enum admin_place_lifecycle_status {
+  draft
+  active
+  hidden
+  temporarily_closed
+  closed
+  archived
+  duplicate_merged
+}
+
+Enum admin_publication_state {
+  draft
+  unpublished
+  published
+  pending_changes
+}
+
+Enum admin_marker_visibility_state {
+  visible
+  hidden
+}
+
+Enum admin_claim_status {
+  pending
+  approved
+  rejected
+  cancelled
+  revoked
+}
+
+Enum admin_manager_role {
+  owner
+  manager
+  staff
+}
+
+Enum admin_manager_status {
+  active
+  suspended
+  revoked
+}
+
+Enum admin_change_request_status {
+  pending
+  approved
+  rejected
+  cancelled
+  applied
+}
+
+Enum admin_change_request_type {
+  place_core
+  map_marker
+  business_hours
+  menu
+  inventory
+  price
+  outdoor_profile
+  closure
+  reopen
+  ownership_transfer
+}
+
+Enum admin_change_item_action {
+  create
+  update
+  delete
+}
+
+Enum admin_publish_status {
+  pending
+  published
+  failed
+  cancelled
+}
+
+Enum admin_menu_status {
+  active
+  hidden
+  discontinued
+}
+
+Enum admin_availability_status {
+  in_stock
+  low_stock
+  out_of_stock
+  unknown
+  discontinued
+}
+
+Table admin_ops.places {
+  id uuid [pk]
+
+  display_name varchar [not null, note: "Canonical admin-managed place name. Published copy becomes map_view.markers.label."]
+  normalized_name varchar [not null]
+  place_type admin_place_type [not null]
+
+  lifecycle_status admin_place_lifecycle_status [not null, default: 'draft', note: "Admin-owned lifecycle. map_view must not own this."]
+  publication_state admin_publication_state [not null, default: 'draft']
+
+  address text [note: "Admin-owned. Map marker DB does not store address."]
+  road_address text [note: "Admin-owned. Map marker DB does not store address."]
+  address_detail text
+
+  location geography [note: "Admin-owned PostGIS geography(Point,4326). Published copy becomes map_view.markers.location."]
+  geohash varchar
+
+  phone_public varchar
+  website_url text
+  instagram_url text
+
+  price_level smallint [note: "Optional admin-managed display price band, 1-5. Can be copied into marker filter_json if approved."]
+  recommendation_eligible boolean [not null, default: true]
+
+  merged_into_place_id uuid [ref: > admin_ops.places.id]
+
+  current_revision bigint [not null, default: 1]
+  published_revision bigint [not null, default: 0]
+  last_published_at timestamptz
+
+  created_by_user_id varchar [note: "auth-service user id as text. No cross-service FK."]
+  updated_by_user_id varchar [note: "auth-service user id as text. No cross-service FK."]
+
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (normalized_name) [name: "idx_admin_places_normalized_name"]
+    (place_type, lifecycle_status) [name: "idx_admin_places_type_status"]
+    (publication_state) [name: "idx_admin_places_publication_state"]
+    (recommendation_eligible) [name: "idx_admin_places_recommendation_eligible"]
+    (geohash) [name: "idx_admin_places_geohash"]
+  }
+}
+
+Table admin_ops.place_map_settings {
+  place_id uuid [pk, ref: > admin_ops.places.id]
+
+  layer_code varchar [not null, note: "Published copy becomes map_view.markers.layer_code. Must match map_view.marker_layers.code at publish time; avoid DB FK across schemas if map_view may split later."]
+  icon_key_override varchar [note: "Published copy becomes map_view.markers.icon_key when not null."]
+  marker_visibility admin_marker_visibility_state [not null, default: 'visible']
+  marker_filter_json jsonb [not null, default: '{}', note: "Approved lightweight filter flags copied into map_view.markers.filter_json. Example: price_band, has_signature_menu."]
+
+  revision bigint [not null, default: 1]
+  updated_by_user_id varchar [note: "auth-service user id as text. No cross-service FK."]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (layer_code, marker_visibility) [name: "idx_admin_place_map_settings_layer_visibility"]
+  }
+}
+
+Table admin_ops.place_business_hours {
+  id uuid [pk]
+  place_id uuid [not null, ref: > admin_ops.places.id]
+
+  day_of_week smallint [not null, note: "0=Sunday, 6=Saturday"]
+  opens_at time
+  closes_at time
+  is_closed boolean [not null, default: false]
+  note text
+
+  revision bigint [not null, default: 1]
+  updated_by_user_id varchar
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (place_id, day_of_week) [unique, name: "uq_admin_place_business_hours_day"]
+  }
+}
+
+Table admin_ops.menu_items {
+  id uuid [pk]
+  place_id uuid [not null, ref: > admin_ops.places.id]
+
+  beverage_catalog_ref_id varchar [note: "External catalog/recommendation beverage id. No cross-service FK."]
+  menu_name varchar [not null]
+  normalized_menu_name varchar [not null]
+  menu_type varchar [not null, note: "bottle | glass | cocktail | beer | wine | whiskey | food | food_pairing | corkage | event"]
+  description text
+  is_signature boolean [not null, default: false]
+  sort_order int [not null, default: 0]
+  status admin_menu_status [not null, default: 'active']
+
+  revision bigint [not null, default: 1]
+  created_by_user_id varchar
+  updated_by_user_id varchar
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (place_id, status) [name: "idx_admin_menu_place_status"]
+    (beverage_catalog_ref_id) [name: "idx_admin_menu_beverage_ref"]
+    (normalized_menu_name) [name: "idx_admin_menu_normalized_name"]
+  }
+}
+
+Table admin_ops.inventory_items {
+  id uuid [pk]
+  place_id uuid [not null, ref: > admin_ops.places.id]
+  menu_item_id uuid [ref: > admin_ops.menu_items.id]
+
+  beverage_catalog_ref_id varchar [note: "External catalog/recommendation beverage id. No cross-service FK."]
+  inventory_name varchar [note: "Raw name when catalog mapping is not ready."]
+
+  availability_status admin_availability_status [not null, default: 'unknown']
+  stock_confidence numeric [not null, default: 0.500, note: "0.000 to 1.000"]
+  quantity_text varchar
+  last_seen_at timestamptz
+  expires_at timestamptz
+
+  revision bigint [not null, default: 1]
+  updated_by_user_id varchar
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (place_id, availability_status) [name: "idx_admin_inventory_place_status"]
+    (place_id, beverage_catalog_ref_id) [name: "idx_admin_inventory_place_beverage"]
+    (expires_at) [name: "idx_admin_inventory_expires_at"]
+  }
+}
+
+Table admin_ops.price_offers {
+  id uuid [pk]
+  place_id uuid [not null, ref: > admin_ops.places.id]
+  menu_item_id uuid [ref: > admin_ops.menu_items.id]
+
+  beverage_catalog_ref_id varchar [note: "External catalog/recommendation beverage id. No cross-service FK."]
+  price_krw int [not null]
+  currency varchar [not null, default: 'KRW']
+  price_type varchar [not null, note: "bottle | glass | cocktail | corkage | set | event | happy_hour | pickup"]
+  note text
+
+  valid_from timestamptz
+  valid_until timestamptz
+  confidence numeric [not null, default: 0.500, note: "0.000 to 1.000"]
+
+  revision bigint [not null, default: 1]
+  updated_by_user_id varchar
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (place_id, beverage_catalog_ref_id) [name: "idx_admin_price_place_beverage"]
+    (place_id, menu_item_id) [name: "idx_admin_price_place_menu"]
+    (valid_until) [name: "idx_admin_price_valid_until"]
+  }
+}
+
+Table admin_ops.outdoor_spot_profiles {
+  place_id uuid [pk, ref: > admin_ops.places.id]
+
+  allowed_activity_notes text
+  nearby_store_notes text
+  seating_level varchar [note: "none | low | medium | high"]
+  crowd_level varchar [note: "low | medium | high | varies"]
+  restroom_available boolean
+  parking_available boolean
+  weather_sensitive boolean [not null, default: true]
+  policy_notes text
+  safety_notes text
+
+  revision bigint [not null, default: 1]
+  updated_by_user_id varchar
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table admin_ops.business_claims {
+  id uuid [pk]
+  place_id uuid [not null, ref: > admin_ops.places.id]
+
+  requester_user_id varchar [not null, note: "auth-service user id as text. No cross-service FK."]
+  requester_name varchar
+  requester_phone varchar
+  claim_status admin_claim_status [not null, default: 'pending']
+
+  evidence_document_refs jsonb [not null, default: '[]']
+  requested_at timestamptz [not null]
+  reviewed_by_user_id varchar
+  reviewed_at timestamptz
+  review_note text
+
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (place_id, claim_status) [name: "idx_admin_claims_place_status"]
+    (requester_user_id, claim_status) [name: "idx_admin_claims_requester_status"]
+  }
+}
+
+Table admin_ops.place_managers {
+  id uuid [pk]
+  place_id uuid [not null, ref: > admin_ops.places.id]
+
+  user_id varchar [not null, note: "auth-service user id as text. No cross-service FK."]
+  manager_role admin_manager_role [not null]
+  manager_status admin_manager_status [not null, default: 'active']
+
+  granted_by_user_id varchar
+  granted_reason text
+  revoked_at timestamptz
+
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (place_id, user_id) [unique, name: "uq_admin_place_manager_user"]
+    (user_id, manager_status) [name: "idx_admin_place_managers_user_status"]
+    (place_id, manager_status) [name: "idx_admin_place_managers_place_status"]
+  }
+}
+
+Table admin_ops.change_requests {
+  id uuid [pk]
+  place_id uuid [ref: > admin_ops.places.id, note: "Nullable for new-place requests."]
+
+  request_type admin_change_request_type [not null]
+  request_status admin_change_request_status [not null, default: 'pending']
+
+  requested_by_user_id varchar [not null, note: "auth-service user id as text. No cross-service FK."]
+  requester_role varchar [not null, note: "operator | owner | manager | staff | system"]
+  request_reason text
+
+  reviewed_by_user_id varchar
+  reviewed_at timestamptz
+  review_note text
+
+  applied_by_user_id varchar
+  applied_at timestamptz
+
+  idempotency_key varchar
+  metadata_json jsonb [not null, default: '{}']
+
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (request_status, request_type, created_at) [name: "idx_admin_change_requests_queue"]
+    (place_id, request_status) [name: "idx_admin_change_requests_place_status"]
+    (idempotency_key) [name: "idx_admin_change_requests_idempotency"]
+  }
+}
+
+Table admin_ops.change_request_items {
+  id uuid [pk]
+  change_request_id uuid [not null, ref: > admin_ops.change_requests.id]
+
+  target_type varchar [not null, note: "place | map_settings | business_hours | menu_item | inventory_item | price_offer | outdoor_profile"]
+  target_id uuid [note: "Existing target id for update/delete. Null for create."]
+  action admin_change_item_action [not null]
+
+  before_json jsonb
+  after_json jsonb [not null]
+  validation_status varchar [not null, default: 'pending', note: "pending | valid | invalid | needs_review"]
+  validation_errors_json jsonb [not null, default: '[]']
+
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (change_request_id) [name: "idx_admin_change_items_request"]
+    (target_type, target_id) [name: "idx_admin_change_items_target"]
+  }
+}
+
+Table admin_ops.publish_jobs {
+  id uuid [pk]
+  place_id uuid [not null, ref: > admin_ops.places.id]
+  source_change_request_id uuid [ref: > admin_ops.change_requests.id]
+
+  publish_status admin_publish_status [not null, default: 'pending']
+  target_revision bigint [not null, note: "Revision from admin_ops.places.current_revision to publish."]
+
+  marker_payload_json jsonb [not null, default: '{}', note: "Exact payload used to upsert map_view.markers: place_ref, layer_code, label, location, icon_key, visibility, filter_json, published_revision."]
+  published_detail_snapshot_json jsonb [not null, default: '{}', note: "Optional detail snapshot for future Place Detail API cache. Not used by map marker DB."]
+
+  requested_by_user_id varchar
+  published_by_user_id varchar
+  published_at timestamptz
+  error_message text
+
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+
+  indexes {
+    (publish_status, created_at) [name: "idx_admin_publish_jobs_queue"]
+    (place_id, target_revision) [unique, name: "uq_admin_publish_place_revision"]
+  }
+}
+
+Table admin_ops.admin_audit_logs {
+  id uuid [pk]
+
+  actor_user_id varchar [note: "auth-service user id as text. No cross-service FK."]
+  actor_role varchar [note: "operator | owner | manager | staff | system"]
+  action varchar [not null]
+
+  target_type varchar [not null]
+  target_id uuid
+
+  before_json jsonb
+  after_json jsonb
+  request_id varchar
+  ip_address inet
+  user_agent text
+
+  created_at timestamptz [not null]
+
+  indexes {
+    (target_type, target_id, created_at) [name: "idx_admin_audit_target"]
+    (actor_user_id, created_at) [name: "idx_admin_audit_actor"]
+    (action, created_at) [name: "idx_admin_audit_action"]
+  }
+}
