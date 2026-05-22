@@ -15,6 +15,25 @@ map_place_data_bootstrap_v0_3/ Extracted bootstrap data package
 map_place_service_erd_v0_1.dbml DBML source for the current ERD draft
 ```
 
+## Local DB Quick Start
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.db.yml up -d db
+python3 scripts/db/apply_migrations.py
+python3 scripts/db/verify_schema.py
+```
+
+Optional staging-only seed load:
+
+```bash
+python3 scripts/db/apply_migrations.py \
+  --load-source-registry \
+  --load-outdoor-candidates
+```
+
+The optional seed load writes only source/staging/review tables. It must not create canonical `places`.
+
 ## Safety Notes
 
 - Public/operator/bootstrap data must go to staging/review first.
