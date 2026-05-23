@@ -14,6 +14,36 @@ admin_ops
 
 This repository is being cleaned around the minimal `map_view` direction. Legacy data-ingestion/bootstrap docs and scripts from the previous oversized map/place design have been removed from the working tree.
 
+## Current Status
+로컬 백엔드 기반은 준비되었습니다.
+
+현재 준비된 것:
+
+- 로컬 PostGIS `map_view` read model
+- marker layer seed: `bar`, `pub`, `liquor_shop`, `outdoor_spot`, `restaurant`, `convenience_store`, `other`
+- read-only map API: health, layer list, bbox marker query
+- whole-Seoul marker paging through `limit` + `offset`
+- official SMBA public API based local preview markers for Seoul bar/pub/liquor shop data
+- source policy docs: public data is evidence/preview, Kakao is realtime only, canonical requires review/publish workflow
+
+현재 로컬 DB preview marker 규모:
+
+```text
+bar         10,193
+pub          2,643
+liquor_shop    393
+total       13,229
+```
+
+중요한 경계:
+
+- 이 13,229개 row는 프론트엔드 지도 개발을 위한 preview marker입니다.
+- 아직 canonical place가 아닙니다.
+- production publish도 아닙니다.
+- 실제 서비스 데이터로 확정하려면 candidate staging, dedupe, review, approval, publish workflow가 필요합니다.
+
+다음 큰 작업은 이 API를 사용하는 실제 frontend map 구현입니다.
+
 ## 지금까지 한 작업
 
 이 저장소는 현재 프론트엔드 지도 구현을 시작할 수 있는 최소 백엔드 기반까지 정리되어 있습니다.
@@ -216,6 +246,15 @@ python3 scripts/db/seed_seoul_preview_markers_from_smba.py \
 ```
 
 이 명령은 소상공인시장진흥공단 상가 API의 서울특별시(`ctprvnCd=11`) 데이터만 사용합니다.
+
+2026-05-23 로컬 실행 결과:
+
+```text
+I21104 요리 주점     -> bar          10,193
+I21103 생맥주 전문   -> pub           2,643
+G20602 주류 소매업   -> liquor_shop     393
+total                              13,229
+```
 
 현재 로컬 preview에 포함하는 source category:
 
