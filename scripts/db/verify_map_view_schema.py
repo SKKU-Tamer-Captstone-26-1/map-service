@@ -42,6 +42,16 @@ EXPECTED_INDEXES = {
     "uq_markers_place_ref",
 }
 
+EXPECTED_MARKER_LAYERS = {
+    "bar": {"icon_key": "bar", "display_order": 10, "default_visible": True, "is_active": True},
+    "pub": {"icon_key": "beer", "display_order": 20, "default_visible": True, "is_active": True},
+    "liquor_shop": {"icon_key": "bottle", "display_order": 30, "default_visible": True, "is_active": True},
+    "outdoor_spot": {"icon_key": "trees", "display_order": 40, "default_visible": True, "is_active": True},
+    "restaurant": {"icon_key": "utensils", "display_order": 50, "default_visible": False, "is_active": True},
+    "convenience_store": {"icon_key": "store", "display_order": 60, "default_visible": False, "is_active": True},
+    "other": {"icon_key": "map-pin", "display_order": 90, "default_visible": False, "is_active": True},
+}
+
 EXPECTED_FKS = {
     ("fk_markers_layer_code", "map_view.markers", "map_view.marker_layers"),
     ("fk_marker_events_marker_id", "map_view.marker_publication_events", "map_view.markers"),
@@ -222,6 +232,24 @@ def verify(database_url: str, *, strict_clean_db: bool = False) -> dict[str, Any
                         """,
                     )
                 ]
+            marker_layers = {}
+            if "marker_layers" in map_view_tables:
+                marker_layers = {
+                    row[0]: {
+                        "icon_key": row[1],
+                        "display_order": row[2],
+                        "default_visible": row[3],
+                        "is_active": row[4],
+                    }
+                    for row in fetch_all(
+                        cursor,
+                        """
+                        SELECT code, icon_key, display_order, default_visible, is_active
+                        FROM map_view.marker_layers
+                        ORDER BY code
+                        """,
+                    )
+                }
 
     failures: list[str] = []
     needs_review: list[str] = []
@@ -278,6 +306,18 @@ def verify(database_url: str, *, strict_clean_db: bool = False) -> dict[str, Any
     if "uq_markers_place_ref" not in constraints:
         failures.append("missing uq_markers_place_ref unique constraint")
 
+    missing_marker_layers = sorted(set(EXPECTED_MARKER_LAYERS) - set(marker_layers))
+    if missing_marker_layers:
+        failures.append(f"missing marker layer seed rows: {missing_marker_layers}")
+
+    marker_layer_mismatches = {
+        code: {"expected": expected, "actual": marker_layers.get(code)}
+        for code, expected in EXPECTED_MARKER_LAYERS.items()
+        if code in marker_layers and marker_layers[code] != expected
+    }
+    if marker_layer_mismatches:
+        failures.append(f"marker layer seed row mismatches: {marker_layer_mismatches}")
+
     legacy_public_tables = sorted(LEGACY_PUBLIC_APP_TABLES & public_tables)
     if legacy_public_tables:
         needs_review.append(f"legacy public app tables still present: {legacy_public_tables}")
@@ -292,6 +332,7 @@ def verify(database_url: str, *, strict_clean_db: bool = False) -> dict[str, Any
         "extensions": sorted(extensions),
         "schemas": sorted(schemas),
         "map_view_tables": sorted(map_view_tables),
+        "marker_layers": marker_layers,
         "legacy_public_tables_present": legacy_public_tables,
         "enums": enums,
         "indexes": sorted(indexes),

@@ -1,11 +1,12 @@
 source_name,source_category_pattern,target_category,confidence,review_required,notes
 소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 편의점,convenience_store,medium,true,Candidate only; verify active business and location
-소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 맥주 or 호프,pub,low,true,Operator review required; not enough for canonical pub
-소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 주점 or 바,needs_review,low,true,Adult/general categories may be mixed
+소상공인시장진흥공단_상가(상권)정보_API,상권업종명 in 백반/한정식|돼지고기 구이/찜|김밥/만두/분식|국/탕/찌개류|중국집|경양식|해산물 구이/찜|치킨|국수/칼국수|횟집|닭/오리고기 구이/찜|구내식당|족발/보쌈|전/부침개|일식 회/초밥|소고기 구이/찜,restaurant,medium,true,Observed in local SMBA Mapo I2 dry-run; candidate only and never auto-publish
+소상공인시장진흥공단_상가(상권)정보_API,상권업종명 in 카페|떡/한과|그 외 기타 간이 음식점,other,low,true,Observed in local SMBA Mapo I2 dry-run; not a core place category without review
+소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 유흥,excluded,high,true,Adult nightlife category; excluded by product policy even if source row is public
+소상공인시장진흥공단_상가(상권)정보_API,상권업종명 contains 맥주 or 호프 or 생맥주 or 주점 or 바,needs_review,low,true,Ambiguous alcohol/nightlife category; not enough for pub/bar canonical use
 행정안전부_식품_일반음식점 조회서비스,업태구분명 in 한식|중식|일식|경양식,restaurant,medium,true,Use only active/open business status
-행정안전부_식품_일반음식점 조회서비스,업태구분명 contains 호프 or 통닭,pub,low,true,Could be restaurant or pub; review before publish
+행정안전부_식품_일반음식점 조회서비스,업태구분명 contains 호프 or 주점 or 바 or 통닭,needs_review,low,true,Could be restaurant or alcohol venue; review before any candidate promotion
 행정안전부_식품_휴게음식점 조회서비스,업태구분명 contains 카페 or 다류,other,low,true,Not core place category unless product scope expands
 행정안전부_식품_단란주점영업 조회서비스,any,excluded,high,true,Approved API access but excluded by product policy until separate review
 행정안전부_식품_유흥주점영업 조회서비스,any,excluded,high,true,Approved API access but excluded by adult nightlife policy until separate review
-전국도시공원정보표준데이터,공원구분 exists,outdoor_spot,medium,true,Use after source license reconfirmation
-Kakao Local API,any,realtime_lookup,none,true,Do not persist as canonical category evidence
+전국도시공원정보표준데이터,공원구분 exists,needs_review,none,true,License/usage must be reconfirmed before any outdoor_spot mapping

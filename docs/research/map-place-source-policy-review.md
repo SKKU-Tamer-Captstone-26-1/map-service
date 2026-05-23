@@ -33,10 +33,20 @@ Kakao -> realtime_only
 | 소상공인시장진흥공단_상가(상권)정보_API | `storable` | No | `place_import_candidates` |
 | 행정안전부_식품_일반음식점 조회서비스 | `storable` | No | `place_import_candidates` |
 | 행정안전부_식품_휴게음식점 조회서비스 | `storable` | No | `place_import_candidates` |
-| 행정안전부_식품_단란주점영업 조회서비스 | `storable` | No | `excluded` |
-| 행정안전부_식품_유흥주점영업 조회서비스 | `storable` | No | `excluded` |
+| 행정안전부_식품_단란주점영업 조회서비스 | `restricted` | No | `excluded` |
+| 행정안전부_식품_유흥주점영업 조회서비스 | `restricted` | No | `excluded` |
 
 API 활용 승인은 호출 권한과 quota 전제일 뿐입니다. canonical place 저장, 자동 승인, marker publish, product policy 승인을 의미하지 않습니다.
+
+단란주점/유흥주점 계열은 공공데이터 상세에 `이용허락범위 제한 없음`이 표시되어도 ONTHEBLOCK product/adult nightlife policy상 기본 제외합니다. 이 판단은 canonical 사용 허용을 뜻하지 않습니다.
+
+### 확인 부족 출처
+
+| Source | Storage Policy | Canonical Use | Default Target |
+|---|---|---:|---|
+| 전국도시공원정보표준데이터 | `unknown_needs_review` | No | `needs_review` |
+
+전국도시공원은 라이선스/사용 조건을 개별 상세 화면에서 재확인하기 전까지 저장 가능한 후보 데이터로 취급하지 않습니다. `outdoor_spot` 매핑도 재확인 이후 별도 변경으로만 허용합니다.
 
 ### 공공데이터포털 공통 정책
 

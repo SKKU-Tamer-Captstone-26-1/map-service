@@ -50,11 +50,13 @@
 
 ## 전국도시공원정보표준데이터
 
+현재 source policy는 `unknown_needs_review`입니다. 아래 컬럼 매핑은 라이선스/사용 조건을 재확인한 뒤에만 후보 staging 설계에 사용할 수 있습니다.
+
 | Source Column | Candidate Field | Notes |
 |---|---|---|
 | `관리번호` | `external_source_id` | source id |
 | `공원명` | `normalized_name` | 시설명 |
-| `공원구분` | `source_category_name` | `outdoor_spot` 후보 |
+| `공원구분` | `source_category_name` | 현재는 `needs_review`; 재확인 전 `outdoor_spot` 자동 매핑 금지 |
 | `소재지도로명주소` / `소재지지번주소` | `normalized_address` | 주소 보존 |
 | `위도` | `latitude` | WGS84로 보이지만 라이선스와 함께 재확인 |
 | `경도` | `longitude` | WGS84로 보이지만 라이선스와 함께 재확인 |
@@ -65,13 +67,16 @@
 | Source Pattern | Target Category | Confidence | Notes |
 |---|---|---:|---|
 | 소상공인 업종 contains `편의점` | `convenience_store` | medium | 후보로만 사용 |
-| 소상공인 업종 contains `맥주` or `호프` | `pub` | low | 운영자 리뷰 필수 |
-| 소상공인 업종 contains `주점` or `바` | `needs_review` | low | 성인/일반 주점 혼재 |
+| 소상공인 음식 업종 in 백반/한정식, 구이/찜, 분식, 탕/찌개, 중식, 경양식, 치킨, 국수, 횟집 등 | `restaurant` | medium | Mapo I2 local dry-run 관측값 기반, 후보로만 사용 |
+| 소상공인 음식 업종 in 카페, 떡/한과, 기타 간이 음식점 | `other` | low | 핵심 category가 아니므로 리뷰 필요 |
+| 소상공인 업종 contains `유흥` | `excluded` | high | adult nightlife product policy |
+| 소상공인 업종 contains `맥주`, `호프`, `생맥주`, `주점`, `바` | `needs_review` | low | source category만으로 `pub/bar` 확정 금지 |
 | 행안부 일반음식점 업태 in `한식`, `중식`, `일식`, `경양식` | `restaurant` | medium | 영업상태 정상만 |
-| 행안부 휴게음식점 | `restaurant` or `other` | low | 서비스 정책에 맞춰 재검토 |
+| 행안부 일반음식점 업태 contains `호프`, `주점`, `바`, `통닭` | `needs_review` | low | restaurant/alcohol venue가 섞일 수 있음 |
+| 행안부 휴게음식점 | `other` 또는 `needs_review` | low | 서비스 정책에 맞춰 재검토 |
 | 행안부 단란주점영업 | `excluded` | high | API access approved, product policy review required |
 | 행안부 유흥주점영업 | `excluded` | high | API access approved, adult nightlife policy review required |
-| 도시공원 공원구분 exists | `outdoor_spot` | medium | 라이선스 재확인 후 |
+| 도시공원 공원구분 exists | `needs_review` | none | 라이선스/사용 조건 재확인 전 outdoor_spot 금지 |
 
 ## Quality Checks
 

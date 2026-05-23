@@ -26,7 +26,10 @@ That applies only:
 
 ```text
 migrations/007_create_map_view_minimal_schema.sql
+migrations/008_seed_map_view_marker_layers.sql
 ```
+
+`008` seeds map display layer configuration only; it does not create places, candidates, markers, or public-data imports.
 
 Historical public place/admin/import migrations remain available through `--migration-set legacy-full` for investigation only.
 

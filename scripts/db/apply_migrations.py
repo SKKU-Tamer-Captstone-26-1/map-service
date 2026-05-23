@@ -14,7 +14,10 @@ DEFAULT_MIGRATIONS_DIR = REPO_ROOT / "migrations"
 DEFAULT_MIGRATION_SET = "map-view"
 
 MIGRATION_SETS = {
-    "map-view": ("007_create_map_view_minimal_schema.sql",),
+    "map-view": (
+        "007_create_map_view_minimal_schema.sql",
+        "008_seed_map_view_marker_layers.sql",
+    ),
     "legacy-full": None,
 }
 

@@ -48,9 +48,10 @@ python3 scripts/db/verify_map_view_schema.py --strict-clean-db
 
 ```text
 migrations/007_create_map_view_minimal_schema.sql
+migrations/008_seed_map_view_marker_layers.sql
 ```
 
-This is the expected clean local/dev path. It does not apply the older public place/admin/import migrations.
+This is the expected clean local/dev and pre-deploy readiness path. It does not apply the older public place/admin/import migrations. The seed migration inserts only `map_view.marker_layers` display configuration; it does not insert places, candidates, markers, or public data.
 
 Dry-run the default path:
 

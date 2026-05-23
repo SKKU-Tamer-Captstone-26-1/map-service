@@ -11,7 +11,14 @@ python3 scripts/db/apply_migrations.py --migration-set map-view
 python3 scripts/db/verify_map_view_schema.py --strict-clean-db
 ```
 
-`map-view` set은 `migrations/007_create_map_view_minimal_schema.sql`만 적용합니다.
+`map-view` set은 아래 파일만 적용합니다.
+
+```text
+migrations/007_create_map_view_minimal_schema.sql
+migrations/008_seed_map_view_marker_layers.sql
+```
+
+`008`은 `map_view.marker_layers` 표시 설정만 넣는 idempotent seed입니다. canonical place, marker, public-data candidate를 넣지 않습니다.
 
 ## 현재 알려진 문제
 
@@ -86,6 +93,7 @@ python3 scripts/db/verify_map_view_schema.py --strict-clean-db
 ## 성공 기준
 
 - `map_view.marker_layers`, `map_view.markers`, `map_view.marker_publication_events`만 `map_view` app table로 존재합니다.
+- `map_view.marker_layers`에 pre-deploy 기본 layer config가 존재합니다.
 - `postgis`, `pgcrypto` extension이 존재합니다.
 - `markers.location`은 `geography(Point,4326)`입니다.
 - `idx_markers_location_gist`가 GiST index입니다.

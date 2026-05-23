@@ -65,9 +65,10 @@ place outbox
 
 ```text
 migrations/007_create_map_view_minimal_schema.sql
+migrations/008_seed_map_view_marker_layers.sql
 ```
 
-이 migration은 다음만 생성합니다.
+이 migration set은 다음만 생성하거나 설정합니다.
 
 ```text
 map_view schema
@@ -77,6 +78,7 @@ map_view.markers
 map_view.marker_publication_events
 internal map_view FKs
 map_view indexes
+map_view.marker_layers 기본 표시 설정
 ```
 
 아래는 아직 하지 않습니다.

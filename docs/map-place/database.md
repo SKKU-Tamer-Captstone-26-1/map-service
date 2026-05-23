@@ -28,7 +28,14 @@ Equivalent explicit command:
 python3 scripts/db/apply_migrations.py --migration-set map-view
 ```
 
-This applies only `migrations/007_create_map_view_minimal_schema.sql`.
+This applies:
+
+```text
+migrations/007_create_map_view_minimal_schema.sql
+migrations/008_seed_map_view_marker_layers.sql
+```
+
+`008_seed_map_view_marker_layers.sql` inserts idempotent map display layer configuration only. It does not insert markers, public-data candidates, or canonical places.
 
 ## Legacy Migration Set
 
@@ -55,3 +62,15 @@ map_view.marker_publication_events
 ```
 
 No import/source/candidate/canonical tables should live in `map_view`.
+
+Expected pre-deploy layer config:
+
+```text
+bar
+pub
+liquor_shop
+outdoor_spot
+restaurant
+convenience_store
+other
+```

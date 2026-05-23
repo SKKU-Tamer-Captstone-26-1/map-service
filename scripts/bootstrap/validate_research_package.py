@@ -75,7 +75,6 @@ TARGET_CATEGORIES = {
     "other",
     "excluded",
     "needs_review",
-    "realtime_lookup",
 }
 
 CONFIDENCE_VALUES = {
@@ -146,6 +145,12 @@ def validate_source_registry(rows: list[dict[str, str]]) -> list[str]:
             errors.append(f"{SOURCE_REGISTRY_FILE}:{index}: review_required must be true or false")
         if canonical_use_allowed == "true":
             errors.append(f"{SOURCE_REGISTRY_FILE}:{index}: canonical_use_allowed must remain false for research sources")
+        if storage_policy == "storable" and default_target != "place_import_candidates":
+            errors.append(f"{SOURCE_REGISTRY_FILE}:{index}: storable sources must target place_import_candidates")
+        if storage_policy == "restricted" and default_target not in {"excluded", "needs_review"}:
+            errors.append(f"{SOURCE_REGISTRY_FILE}:{index}: restricted sources must target excluded or needs_review")
+        if storage_policy == "unknown_needs_review" and default_target != "needs_review":
+            errors.append(f"{SOURCE_REGISTRY_FILE}:{index}: unknown_needs_review sources must target needs_review")
         if storage_policy == "realtime_only" and default_target != "realtime_lookup":
             errors.append(f"{SOURCE_REGISTRY_FILE}:{index}: realtime_only sources must target realtime_lookup")
         if is_kakao(row):
@@ -157,27 +162,47 @@ def validate_source_registry(rows: list[dict[str, str]]) -> list[str]:
     return errors
 
 
-def validate_category_mapping(rows: list[dict[str, str]]) -> list[str]:
+def validate_category_mapping(
+    rows: list[dict[str, str]],
+    source_registry: list[dict[str, str]],
+) -> list[str]:
     errors: list[str] = []
     missing = missing_columns(rows, CATEGORY_MAPPING_COLUMNS)
     if missing:
         return [f"{CATEGORY_MAPPING_FILE}: missing columns: {missing}"]
 
+    source_by_name = {row["source_name"].strip(): row for row in source_registry}
+
     for index, row in enumerate(rows, start=2):
+        source_name = row["source_name"].strip()
         target_category = row["target_category"].strip()
         confidence = row["confidence"].strip()
         review_required = row["review_required"].strip().lower()
 
-        if not row["source_name"].strip():
+        if not source_name:
             errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: source_name is required")
+        elif source_name not in source_by_name:
+            errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: source_name is not registered: {source_name}")
         if target_category not in TARGET_CATEGORIES:
             errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: invalid target_category: {target_category}")
         if confidence not in CONFIDENCE_VALUES:
             errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: invalid confidence: {confidence}")
         if not check_bool(review_required):
             errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: review_required must be true or false")
-        if is_kakao(row) and target_category != "realtime_lookup":
-            errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: Kakao category target must be realtime_lookup")
+        if target_category in {"bar", "pub"}:
+            if confidence != "high" or review_required != "true":
+                errors.append(
+                    f"{CATEGORY_MAPPING_FILE}:{index}: pub/bar mappings must be high confidence and review_required"
+                )
+        if is_kakao(row):
+            errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: Kakao must not appear in category mapping")
+
+        source = source_by_name.get(source_name, {})
+        storage_policy = source.get("storage_policy", "").strip()
+        if storage_policy == "restricted" and target_category not in {"excluded", "needs_review"}:
+            errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: restricted sources must map only to excluded or needs_review")
+        if storage_policy == "unknown_needs_review" and target_category != "needs_review":
+            errors.append(f"{CATEGORY_MAPPING_FILE}:{index}: unknown_needs_review sources must map to needs_review")
 
     return errors
 
@@ -206,6 +231,12 @@ def validate_download_plan(rows: list[dict[str, str]]) -> list[str]:
             errors.append(f"{DOWNLOAD_PLAN_FILE}:{index}: invalid storage_policy: {storage_policy}")
         if output_target not in DEFAULT_TARGETS:
             errors.append(f"{DOWNLOAD_PLAN_FILE}:{index}: invalid output_target: {output_target}")
+        if storage_policy == "storable" and output_target != "place_import_candidates":
+            errors.append(f"{DOWNLOAD_PLAN_FILE}:{index}: storable sources must target place_import_candidates")
+        if storage_policy == "restricted" and output_target not in {"excluded", "needs_review"}:
+            errors.append(f"{DOWNLOAD_PLAN_FILE}:{index}: restricted sources must target excluded or needs_review")
+        if storage_policy == "unknown_needs_review" and output_target != "needs_review":
+            errors.append(f"{DOWNLOAD_PLAN_FILE}:{index}: unknown_needs_review sources must target needs_review")
         if storage_policy == "realtime_only" and output_target != "realtime_lookup":
             errors.append(f"{DOWNLOAD_PLAN_FILE}:{index}: realtime_only sources must target realtime_lookup")
         if is_kakao(row):
@@ -224,7 +255,7 @@ def validate(bootstrap_dir: Path) -> dict[str, Any]:
 
     errors = [
         *validate_source_registry(source_registry),
-        *validate_category_mapping(category_mapping),
+        *validate_category_mapping(category_mapping, source_registry),
         *validate_download_plan(download_plan),
     ]
 

@@ -59,7 +59,7 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 - 좌표계: 보정계수 없는 Bessel 중부원점 TM, EPSG:5174로 안내됨
 - API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
 - 기본 target: `place_import_candidates`
-- 판단: `restaurant` 후보와 일부 `pub` 후보의 보조 근거로 적합합니다.
+- 판단: `restaurant` 후보의 보조 근거로 적합합니다. 술집/호프/바 계열은 `needs_review`로만 둡니다.
 
 주의사항:
 - 영업상태 정상/영업 데이터만 후보로 사용합니다.
@@ -89,8 +89,8 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 
 - URL: https://www.data.go.kr/data/15012890/standard.do
 - 주요 항목: 관리번호, 공원명, 공원구분, 주소, 위도, 경도, 시설 항목
-- 기본 target: `place_import_candidates`
-- 판단: `outdoor_spot` 후보로 유용합니다.
+- 기본 target: `needs_review`
+- 판단: `outdoor_spot` 후보로 유용할 수 있지만, 라이선스/사용 조건 재확인 전에는 후보 staging에도 넣지 않습니다.
 - 현재 정책 상태: `unknown_needs_review`
 
 주의사항:
@@ -103,10 +103,11 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 - API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
 - 라이선스/이용허락: 이용허락범위 제한 없음으로 확인되는 데이터가 있음
 - 기본 target: `excluded`
-- 판단: 데이터 저장 가능 여부와 별개로 product policy 리스크가 큽니다.
+- 저장 정책: `restricted`
+- 판단: 데이터 이용허락과 별개로 단란주점/adult nightlife product policy에 의해 기본 제외합니다.
 
 주의사항:
-- 기본적으로 canonical 후보로 쓰지 않습니다.
+- canonical 후보, 자동 승인, marker publish 근거로 쓰지 않습니다.
 - 필요한 경우 별도 정책/법무 검토 후 `needs_review`로만 다룹니다.
 - 공공데이터포털 승인 화면의 정확한 OpenAPI 상세 URL은 구현 전 캡처합니다.
 
@@ -116,10 +117,11 @@ admin_ops / ingest workflow = source registry, import batches, candidates, revie
 - API 승인: 개발계정 승인 확인, 2026-05-22 ~ 2028-05-22
 - 라이선스/이용허락: 이용허락범위 제한 없음으로 확인되는 데이터가 있음
 - 기본 target: `excluded`
-- 판단: adult nightlife product policy 리스크가 커서 기본 제외합니다.
+- 저장 정책: `restricted`
+- 판단: 데이터 이용허락과 별개로 유흥주점/adult nightlife product policy에 의해 기본 제외합니다.
 
 주의사항:
-- 기본적으로 canonical 후보로 쓰지 않습니다.
+- canonical 후보, 자동 승인, marker publish 근거로 쓰지 않습니다.
 - 필요한 경우 별도 정책/법무 검토 후 `needs_review`로만 다룹니다.
 - 공공데이터포털 승인 화면의 정확한 OpenAPI 상세 URL은 구현 전 캡처합니다.
 

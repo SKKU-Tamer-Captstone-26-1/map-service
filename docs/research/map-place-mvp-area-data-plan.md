@@ -11,7 +11,7 @@
 1. MVP 대상 행정구 또는 bounding box를 확정합니다.
 2. 소상공인시장진흥공단 상가정보 API에서 후보 POI를 조회합니다.
 3. 행정안전부 일반음식점/휴게음식점 데이터로 영업상태와 주소 근거를 보강합니다.
-4. 도시공원 데이터는 라이선스 재확인 후 `outdoor_spot` 후보로 별도 처리합니다.
+4. 도시공원 데이터는 라이선스/사용 조건 재확인 전까지 `needs_review`로만 유지합니다.
 5. 승인된 단란주점영업/유흥주점영업 API는 기본 제외합니다.
 6. Kakao Local API는 저장하지 않고 운영자 실시간 검증 보조로만 사용합니다.
 
@@ -22,7 +22,7 @@
 | 1 | 소상공인 상가정보 API | `place_import_candidates` | 상호/업종/주소/경위도 후보 |
 | 2 | 행안부 일반음식점 | `place_import_candidates` | 인허가/영업상태 보조 후보 |
 | 3 | 행안부 휴게음식점 | `place_import_candidates` | 카페/간편식 보조 후보 |
-| 4 | 전국도시공원정보표준데이터 | `needs_review` then candidates | 야외 장소 후보 |
+| 4 | 전국도시공원정보표준데이터 | `needs_review` | 라이선스/사용 조건 재확인 전 후보 import 금지 |
 | 5 | Kakao Local API | `realtime_lookup` | 운영자 검증 보조 |
 | 6 | 행안부 단란주점영업/유흥주점영업 | `excluded` | API 승인됨, product/legal review 전 제외 |
 
@@ -42,6 +42,7 @@
 - source name과 fetched_at 기록
 - 원본 payload 보존 가능 여부 확인
 - Kakao가 아닌 공개 데이터일 것
+- source policy가 `storable`이고 default target이 `place_import_candidates`일 것
 - 좌표계와 좌표 범위 확인
 - category는 보수 매핑
 - `review_status=PENDING` 기본값

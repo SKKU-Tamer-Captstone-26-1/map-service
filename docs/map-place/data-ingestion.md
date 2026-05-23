@@ -39,8 +39,8 @@ The following are not allowed:
 | 행안부 일반음식점/휴게음식점 | `storable` | `place_import_candidates` |
 | 전국도시공원정보표준데이터 | `unknown_needs_review` | `needs_review` |
 | Kakao Local API | `realtime_only` | `realtime_lookup` |
-| 행안부 단란주점영업 | `storable` source, product risk | `excluded` |
-| 행안부 유흥주점영업 | `storable` source, adult nightlife risk | `excluded` |
+| 행안부 단란주점영업 | `restricted`, product/adult nightlife risk | `excluded` |
+| 행안부 유흥주점영업 | `restricted`, adult nightlife risk | `excluded` |
 
 ## Approved API Access
 
