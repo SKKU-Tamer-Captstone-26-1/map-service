@@ -9,6 +9,7 @@
 | [map-place/database.md](map-place/database.md) | local DB와 migration set 기준 |
 | [map-place/erd.md](map-place/erd.md) | ERD source of truth |
 | [map-place/data-ingestion.md](map-place/data-ingestion.md) | public data candidate policy |
+| [map-place/api.md](map-place/api.md) | read-only frontend map API contract |
 | [integrations/kakao-api-policy.md](integrations/kakao-api-policy.md) | Kakao realtime-only policy |
 | [runbooks/local-db-rebaseline.md](runbooks/local-db-rebaseline.md) | local clean DB rebaseline procedure |
 

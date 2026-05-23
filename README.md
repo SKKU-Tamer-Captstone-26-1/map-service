@@ -90,10 +90,10 @@ This command does not call external APIs and does not write to the database.
 Run the bootstrap policy regression tests:
 
 ```bash
-python3 -m unittest tests.test_bootstrap_policy
+python3 -m unittest tests.test_bootstrap_policy tests.test_map_read_api
 ```
 
-These tests keep Kakao realtime-only, unknown sources review-only, restricted adult nightlife excluded, and ambiguous pub/bar categories out of automatic category promotion.
+These tests keep Kakao realtime-only, unknown sources review-only, restricted adult nightlife excluded, ambiguous pub/bar categories out of automatic category promotion, and the read-only map API response contract stable.
 
 Dry-run normalize a local sample file into candidate JSON:
 
@@ -123,6 +123,32 @@ python3 scripts/bootstrap/fetch_public_data_dry_run.py \
 ```
 
 `I2` is the confirmed 소상공인 large industry code for `음식`. The fetcher writes raw responses under `data/raw/` and normalized candidate JSON under `data/normalized/`. Both directories are ignored by Git. It does not write to PostGIS and does not publish markers.
+
+## Read-Only Map API
+
+Run the local read-only map API for frontend development:
+
+```bash
+python3 scripts/db/apply_migrations.py
+python3 scripts/db/seed_dev_map_markers.py --apply
+python3 -m scripts.api.map_read_api
+```
+
+Default URL:
+
+```text
+http://127.0.0.1:8088
+```
+
+Useful endpoints:
+
+```text
+GET /healthz
+GET /v1/map/layers
+GET /v1/map/markers?bbox=126.88,37.53,126.97,37.59&layers=bar,pub&limit=200
+```
+
+The API reads only from `map_view`. The dev seed inserts synthetic local `map_view.markers` fixtures only; it does not insert canonical places, public-data candidates, or Kakao data.
 
 ## Data Bootstrap Direction
 
