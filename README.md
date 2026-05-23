@@ -14,6 +14,59 @@ admin_ops
 
 This repository is being cleaned around the minimal `map_view` direction. Legacy data-ingestion/bootstrap docs and scripts from the previous oversized map/place design have been removed from the working tree.
 
+## 지금까지 한 작업
+
+이 저장소는 현재 프론트엔드 지도 구현을 시작할 수 있는 최소 백엔드 기반까지 정리되어 있습니다.
+
+완료한 범위:
+
+- `map_view` 전용 PostGIS read model을 정리했습니다.
+- 기본 migration set을 `map-view`로 고정해 legacy public place/admin/import table을 기본 경로에서 제외했습니다.
+- pre-deploy용 marker layer seed를 추가했습니다.
+- strict schema verifier와 read-only pre-deploy check를 추가했습니다.
+- 공공데이터 source policy, category mapping, MVP data plan 초안을 정리했습니다.
+- Kakao는 realtime/display/operator verification only로 고정했습니다.
+- 소상공인/행안부 공공데이터는 canonical place가 아니라 candidate evidence로만 다루도록 문서화했습니다.
+- 로컬 frontend 개발용 synthetic `map_view.markers` seed를 추가했습니다.
+- 프론트엔드가 바로 붙을 수 있는 read-only map API를 추가했습니다.
+- 서울 전체 바/펍/주류판매점 로컬 preview marker seed를 추가했습니다.
+
+현재 API 범위:
+
+```text
+GET /healthz
+GET /v1/map/layers
+GET /v1/map/markers?bbox=126.88,37.53,126.97,37.59&layers=bar,pub&limit=200&offset=0
+```
+
+아직 하지 않은 것:
+
+- canonical place DB 구현
+- candidate staging DB 구현
+- publish workflow 구현
+- Kakao ingestion 또는 Kakao 응답 저장
+- 공공데이터를 canonical place 또는 production `map_view`로 직접 적재
+- production DB 작업
+
+즉, 현재 상태는 `map_view` read model + 안전한 source policy + read-only map API + 로컬 preview marker까지 완료된 단계입니다. 다음 큰 작업은 이 API를 사용하는 실제 frontend map 구현입니다.
+
+### Canonical 의미
+
+이 프로젝트에서 `canonical`은 서비스가 최종적으로 신뢰하고 운영 기준으로 삼는 확정 장소 데이터를 뜻합니다. 예를 들어 canonical place는 운영자가 검토하고 승인한 장소명, 주소, 좌표, 카테고리, 표시 여부를 가진 원본 record입니다.
+
+`map_view`는 canonical DB가 아닙니다. `map_view`는 프론트엔드 지도를 빠르게 그리기 위한 read model입니다. 그래서 `map_view.markers`에 있는 `label`, `location`, `layer_code`는 사용자가 직접 수정하는 원본 데이터가 아니라, 나중에 canonical place 또는 publish workflow에서 승인된 값을 복사해 온 표시용 projection이어야 합니다.
+
+공공데이터와 Kakao도 canonical이 아닙니다.
+
+- 공공데이터는 후보 근거(candidate evidence)로만 사용합니다.
+- Kakao는 realtime lookup, 지도 표시, 운영자 검증 보조로만 사용합니다.
+- 공공데이터나 Kakao 응답을 바로 canonical place로 만들지 않습니다.
+- canonical 승격은 별도의 candidate staging, dedupe, review, approval, publish workflow가 생긴 뒤에만 가능합니다.
+
+따라서 현재 단계에서 만든 dev marker seed와 read-only map API는 프론트엔드 개발용 기반입니다. 이것은 실제 장소 원본을 확정했다는 의미가 아닙니다.
+
+즉, 데이터를 모으고 검수를 마친 애들이 canonical이 되는 것입니다.
+
 ## Repository Layout
 
 ```text
@@ -90,7 +143,7 @@ This command does not call external APIs and does not write to the database.
 Run the bootstrap policy regression tests:
 
 ```bash
-python3 -m unittest tests.test_bootstrap_policy tests.test_map_read_api
+python3 -m unittest tests.test_bootstrap_policy tests.test_map_read_api tests.test_seoul_preview_seed
 ```
 
 These tests keep Kakao realtime-only, unknown sources review-only, restricted adult nightlife excluded, ambiguous pub/bar categories out of automatic category promotion, and the read-only map API response contract stable.
@@ -145,10 +198,41 @@ Useful endpoints:
 ```text
 GET /healthz
 GET /v1/map/layers
-GET /v1/map/markers?bbox=126.88,37.53,126.97,37.59&layers=bar,pub&limit=200
+GET /v1/map/markers?bbox=126.88,37.53,126.97,37.59&layers=bar,pub&limit=200&offset=0
 ```
 
 The API reads only from `map_view`. The dev seed inserts synthetic local `map_view.markers` fixtures only; it does not insert canonical places, public-data candidates, or Kakao data.
+
+## Seoul Preview Markers
+
+로컬 프론트엔드 지도에서 서울 전체 바, 펍, 주류 판매점을 확인하려면 승인된 소상공인시장진흥공단 API key가 들어 있는 `.env`를 준비한 뒤 아래 명령을 실행합니다.
+
+```bash
+python3 scripts/db/seed_seoul_preview_markers_from_smba.py \
+  --all-pages \
+  --replace-preview \
+  --apply \
+  --ack-public-data-preview
+```
+
+이 명령은 소상공인시장진흥공단 상가 API의 서울특별시(`ctprvnCd=11`) 데이터만 사용합니다.
+
+현재 로컬 preview에 포함하는 source category:
+
+- `I21103` 생맥주 전문 -> `pub`
+- `I21104` 요리 주점 -> `bar`
+- `G20602` 주류 소매업 -> `liquor_shop`
+
+`유흥` category token이 들어간 row는 제외합니다. 그래서 `I21101` 일반 유흥 주점, `I21102` 무도 유흥 주점은 로컬 preview에도 넣지 않습니다.
+
+이 preview seed는 `map_view.markers`에 row를 넣지만 canonical publish가 아닙니다. 모든 row는 `filter_json.source=smba_public_data_preview`, `filter_json.preview_only=true`, `filter_json.canonical=false`, `filter_json.review_required=true`로 표시됩니다. 즉 프론트엔드 지도를 실제 서울 데이터 크기로 그려보기 위한 임시 표시 데이터입니다.
+
+서울 전체를 한 번에 볼 때는 API limit이 있으므로 `offset`으로 page를 넘겨야 합니다.
+
+```text
+GET /v1/map/markers?bbox=126.70,37.40,127.20,37.75&layers=bar,pub,liquor_shop&limit=500&offset=0
+GET /v1/map/markers?bbox=126.70,37.40,127.20,37.75&layers=bar,pub,liquor_shop&limit=500&offset=500
+```
 
 ## Data Bootstrap Direction
 
@@ -163,7 +247,7 @@ Kakao Local/Map API data is `realtime_only` unless separate legal or partnership
 - Do not create a DB FK from `map_view.markers.place_ref` to `admin_ops.places.id`.
 - Do not drop or reset legacy tables until local/dev cleanup is explicitly approved.
 - Do not bulk-ingest Kakao Local/Map API data as canonical place data.
-- Do not insert public/open data directly into `map_view`.
+- Do not insert public/open data directly into production `map_view`; the SMBA Seoul preview seed is local-only, explicitly acknowledged, non-canonical marker data.
 - Do not publish markers without an explicit reviewed canonical source.
 - Do not let Admin Page write directly to the database.
 - Do not let recommendation-service directly read or write map-service tables.

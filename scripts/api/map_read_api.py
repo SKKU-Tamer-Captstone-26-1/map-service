@@ -28,6 +28,7 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8088
 DEFAULT_LIMIT = 200
 MAX_LIMIT = 500
+MAX_OFFSET = 100000
 ALLOWED_LAYER_CODES = {
     "bar",
     "pub",
@@ -52,6 +53,7 @@ class MarkerQuery:
     bbox: tuple[float, float, float, float]
     layers: tuple[str, ...]
     limit: int
+    offset: int
 
 
 def json_default(value: Any) -> Any:
@@ -113,11 +115,25 @@ def parse_limit(raw_values: list[str] | None) -> int:
     return limit
 
 
+def parse_offset(raw_values: list[str] | None) -> int:
+    if not raw_values:
+        return 0
+    raw = raw_values[-1].strip()
+    try:
+        offset = int(raw)
+    except ValueError as error:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "offset_invalid", "offset must be an integer") from error
+    if offset < 0 or offset > MAX_OFFSET:
+        raise ApiError(HTTPStatus.BAD_REQUEST, "offset_invalid", f"offset must be between 0 and {MAX_OFFSET}")
+    return offset
+
+
 def parse_marker_query(query_params: dict[str, list[str]]) -> MarkerQuery:
     return MarkerQuery(
         bbox=parse_bbox(query_params.get("bbox")),
         layers=parse_layers(query_params.get("layers")),
         limit=parse_limit(query_params.get("limit")),
+        offset=parse_offset(query_params.get("offset")),
     )
 
 
@@ -145,7 +161,7 @@ class MapViewRepository:
         if query.layers:
             layer_clause = "AND m.layer_code = ANY(%s)"
             params.append(list(query.layers))
-        params.append(query.limit)
+        params.extend([query.limit, query.offset])
 
         with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
             with connection.cursor() as cursor:
@@ -172,6 +188,7 @@ class MapViewRepository:
                       {layer_clause}
                     ORDER BY m.published_revision DESC, m.published_at DESC, m.id
                     LIMIT %s
+                    OFFSET %s
                     """,
                     params,
                 )
@@ -239,6 +256,7 @@ class MapReadApi:
                         "bbox": query.bbox,
                         "layers": query.layers,
                         "limit": query.limit,
+                        "offset": query.offset,
                         "count": len(markers),
                     },
                 }

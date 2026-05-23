@@ -43,10 +43,11 @@ class FakeRepository:
 
 class MapReadApiTest(unittest.TestCase):
     def test_parse_marker_query_requires_valid_bbox(self) -> None:
-        query = parse_marker_query({"bbox": ["126.88,37.53,126.97,37.59"], "limit": ["50"]})
+        query = parse_marker_query({"bbox": ["126.88,37.53,126.97,37.59"], "limit": ["50"], "offset": ["100"]})
         self.assertEqual(query.bbox, (126.88, 37.53, 126.97, 37.59))
         self.assertEqual(query.layers, ())
         self.assertEqual(query.limit, 50)
+        self.assertEqual(query.offset, 100)
 
     def test_parse_marker_query_rejects_unknown_layer(self) -> None:
         with self.assertRaises(ApiError) as context:
@@ -59,6 +60,12 @@ class MapReadApiTest(unittest.TestCase):
             parse_marker_query({})
         self.assertEqual(context.exception.status, HTTPStatus.BAD_REQUEST)
         self.assertEqual(context.exception.code, "bbox_required")
+
+    def test_parse_marker_query_rejects_invalid_offset(self) -> None:
+        with self.assertRaises(ApiError) as context:
+            parse_marker_query({"bbox": ["126.88,37.53,126.97,37.59"], "offset": ["-1"]})
+        self.assertEqual(context.exception.status, HTTPStatus.BAD_REQUEST)
+        self.assertEqual(context.exception.code, "offset_invalid")
 
     def test_layers_response_contract(self) -> None:
         status, payload = MapReadApi(FakeRepository()).handle("GET", "/v1/map/layers", {})
@@ -81,13 +88,14 @@ class MapReadApiTest(unittest.TestCase):
         status, payload = MapReadApi(FakeRepository()).handle(
             "GET",
             "/v1/map/markers",
-            {"bbox": ["126.88,37.53,126.97,37.59"], "layers": ["pub"], "limit": ["10"]},
+            {"bbox": ["126.88,37.53,126.97,37.59"], "layers": ["pub"], "limit": ["10"], "offset": ["500"]},
         )
         self.assertEqual(status, HTTPStatus.OK)
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["meta"]["bbox"], (126.88, 37.53, 126.97, 37.59))
         self.assertEqual(payload["meta"]["layers"], ("pub",))
         self.assertEqual(payload["meta"]["limit"], 10)
+        self.assertEqual(payload["meta"]["offset"], 500)
         self.assertEqual(payload["meta"]["count"], 1)
         self.assertEqual(payload["markers"][0]["placeRef"], "20000000-0000-4000-8000-000000000001")
         self.assertEqual(payload["markers"][0]["layerCode"], "pub")

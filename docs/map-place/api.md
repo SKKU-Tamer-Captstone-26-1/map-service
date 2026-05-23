@@ -27,6 +27,18 @@ http://127.0.0.1:8088
 
 The dev marker seed is synthetic local fixture data only. It does not insert canonical places or public/open data.
 
+For a fuller local preview of Seoul bar/pub/liquor shop markers from the official SMBA API:
+
+```bash
+python3 scripts/db/seed_seoul_preview_markers_from_smba.py \
+  --all-pages \
+  --replace-preview \
+  --apply \
+  --ack-public-data-preview
+```
+
+This inserts `map_view.markers` rows with `filter.source=smba_public_data_preview`, `filter.preview_only=true`, and `filter.canonical=false`. It is for local frontend map rendering only and must not be treated as a reviewed canonical place publish.
+
 ## Health
 
 ```http
@@ -71,7 +83,7 @@ Response:
 ## Markers
 
 ```http
-GET /v1/map/markers?bbox=126.88,37.53,126.97,37.59&layers=bar,pub&limit=200
+GET /v1/map/markers?bbox=126.88,37.53,126.97,37.59&layers=bar,pub&limit=200&offset=0
 ```
 
 Query parameters:
@@ -81,6 +93,7 @@ Query parameters:
 | `bbox` | yes | `minLon,minLat,maxLon,maxLat` in WGS84 |
 | `layers` | no | comma-separated layer codes |
 | `limit` | no | `1..500`, default `200` |
+| `offset` | no | `0..100000`, default `0`; use with `limit` to page whole-city results |
 
 Response:
 
@@ -110,12 +123,13 @@ Response:
     "bbox": [126.88, 37.53, 126.97, 37.59],
     "layers": ["bar", "pub"],
     "limit": 200,
+    "offset": 0,
     "count": 1
   }
 }
 ```
 
-Only `visible` markers from active layers are returned.
+Only `visible` markers from active layers are returned. To load a whole Seoul preview, keep requesting the same Seoul bounding box with `offset += limit` until `meta.count` is smaller than `limit`.
 
 ## Errors
 
@@ -138,6 +152,7 @@ bbox_required
 bbox_invalid
 layers_invalid
 limit_invalid
+offset_invalid
 not_found
 method_not_allowed
 internal_error
