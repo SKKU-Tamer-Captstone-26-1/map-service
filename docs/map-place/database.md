@@ -74,3 +74,18 @@ restaurant
 convenience_store
 other
 ```
+
+## Pre-Deploy Check
+
+Use the read-only pre-deploy gate after the local DB has been created and the `map-view` migration set has been applied:
+
+```bash
+python3 scripts/db/predeploy_check.py
+```
+
+It verifies:
+
+- the default migration plan includes only the approved `map-view` files
+- the research bootstrap policy CSVs are valid
+- the local DB passes strict clean `map_view` verification
+- pre-deploy marker layer config is present

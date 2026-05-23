@@ -59,6 +59,14 @@ Dry-run the default path:
 python3 scripts/db/apply_migrations.py --dry-run
 ```
 
+Run the read-only pre-deploy database gate:
+
+```bash
+python3 scripts/db/predeploy_check.py
+```
+
+This checks the `map-view` migration plan, validates research source policy files, and verifies the local DB with `--strict-clean-db`.
+
 The old full replay is still available only when explicitly requested:
 
 ```bash
