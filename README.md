@@ -87,6 +87,14 @@ python3 scripts/bootstrap/validate_research_package.py
 
 This command does not call external APIs and does not write to the database.
 
+Run the bootstrap policy regression tests:
+
+```bash
+python3 -m unittest tests.test_bootstrap_policy
+```
+
+These tests keep Kakao realtime-only, unknown sources review-only, restricted adult nightlife excluded, and ambiguous pub/bar categories out of automatic category promotion.
+
 Dry-run normalize a local sample file into candidate JSON:
 
 ```bash
