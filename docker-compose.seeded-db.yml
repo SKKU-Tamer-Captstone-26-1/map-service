@@ -1,0 +1,27 @@
+name: map-service-seeded-dev
+
+services:
+  db:
+    image: hunbot/map-service-db-seed:2026-05-27
+    platform: ${DOCKER_DEFAULT_PLATFORM:-linux/amd64}
+    container_name: ${MAP_SERVICE_DB_CONTAINER:-map-service-postgis-dev}
+    environment:
+      POSTGRES_DB: ${MAP_SERVICE_DB_NAME:-map_service}
+      POSTGRES_USER: ${MAP_SERVICE_DB_USER:-map_user}
+      POSTGRES_PASSWORD: ${MAP_SERVICE_DB_PASSWORD:-map_pass}
+    ports:
+      - "${MAP_SERVICE_DB_PORT:-55433}:5432"
+    volumes:
+      - map_service_seeded_postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${MAP_SERVICE_DB_USER:-map_user} -d ${MAP_SERVICE_DB_NAME:-map_service}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  map_service_seeded_postgis_data:
