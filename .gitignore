@@ -7,3 +7,5 @@ __pycache__/
 .env
 data/raw/
 data/normalized/
+map_markers_view.html
+markers_export.csv
