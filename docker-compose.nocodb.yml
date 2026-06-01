@@ -1,0 +1,14 @@
+name: map-service-nocodb
+
+services:
+  nocodb:
+    image: nocodb/nocodb:latest
+    container_name: map-nocodb
+    ports:
+      - "8090:8080"
+    volumes:
+      - nocodb_data:/usr/app/data
+    restart: unless-stopped
+
+volumes:
+  nocodb_data:
