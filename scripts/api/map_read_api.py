@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+from zoneinfo import ZoneInfo
 
 import psycopg
 from psycopg.rows import dict_row
@@ -225,7 +226,53 @@ class MapViewRepository:
                 return [dict(row) for row in cursor.fetchall()]
 
 
+_KST = ZoneInfo("Asia/Seoul")
+
+
+def _parse_minutes(t: str) -> int:
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
+
+
+def _compute_is_open(open_time: str | None, close_time: str | None) -> bool | None:
+    if not open_time or not close_time:
+        return None
+    try:
+        now = datetime.now(_KST)
+        now_min = now.hour * 60 + now.minute
+        open_min = _parse_minutes(open_time)
+        close_min = _parse_minutes(close_time)
+        if close_min <= open_min:  # crosses midnight (e.g. 18:00-02:00)
+            return now_min >= open_min or now_min < close_min
+        return open_min <= now_min < close_min
+    except Exception:
+        return None
+
+
+def _format_time(t: str) -> str:
+    h, m = map(int, t.split(":"))
+    return f"{h % 24:02d}:{m:02d}"
+
+
 def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
+    f: dict[str, Any] = marker.get("filter_json") or {}
+
+    raw_address = f.get("road_address") or f.get("address") or ""
+    address = (
+        raw_address
+        .removeprefix("서울특별시 ")
+        .removeprefix("경기도 ")
+        .strip()
+    )
+
+    open_time: str | None = f.get("open_time")
+    close_time: str | None = f.get("close_time")
+    hours = (
+        f"{_format_time(open_time)} - {_format_time(close_time)}"
+        if open_time and close_time
+        else ""
+    )
+
     return {
         "id": marker["id"],
         "placeRef": marker["place_ref"],
@@ -235,7 +282,12 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
         "longitude": marker["longitude"],
         "iconKey": marker["icon_key"],
         "visibility": marker["visibility"],
-        "filter": marker["filter_json"],
+        "imageUrl": f.get("image_url") or "",
+        "address": address,
+        "hours": hours,
+        "isOpen": _compute_is_open(open_time, close_time),
+        "rating": f.get("rating"),
+        "reviewCount": f.get("review_count"),
         "publishedRevision": marker["published_revision"],
         "publishedAt": marker["published_at"],
         "updatedAt": marker["updated_at"],
