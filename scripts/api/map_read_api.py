@@ -154,6 +154,36 @@ class MapViewRepository:
                 )
                 return [dict(row) for row in cursor.fetchall()]
 
+    def search_markers(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
+        with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                      m.id::text AS id,
+                      m.place_ref::text AS place_ref,
+                      m.layer_code,
+                      m.label,
+                      ST_Y(m.location::geometry) AS latitude,
+                      ST_X(m.location::geometry) AS longitude,
+                      COALESCE(m.icon_key, l.icon_key) AS icon_key,
+                      m.visibility::text AS visibility,
+                      m.filter_json,
+                      m.published_revision,
+                      m.published_at,
+                      m.updated_at
+                    FROM map_view.markers m
+                    JOIN map_view.marker_layers l ON l.code = m.layer_code
+                    WHERE m.visibility = 'visible'
+                      AND l.is_active = true
+                      AND m.label ILIKE %s
+                    ORDER BY m.published_revision DESC, m.label
+                    LIMIT %s
+                    """,
+                    (f"%{query}%", limit),
+                )
+                return [dict(row) for row in cursor.fetchall()]
+
     def list_markers(self, query: MarkerQuery) -> list[dict[str, Any]]:
         min_lon, min_lat, max_lon, max_lat = query.bbox
         params: list[Any] = [min_lon, min_lat, max_lon, max_lat]
@@ -261,6 +291,17 @@ class MapReadApi:
                     },
                 }
             )
+
+        if path == "/v1/map/search":
+            raw_q = query_params.get("q", [""])
+            q = (raw_q[-1] if raw_q else "").strip()
+            if not q:
+                return success({"markers": [], "meta": {"q": "", "count": 0}})
+            markers = self.repository.search_markers(q)
+            return success({
+                "markers": [marker_response(marker) for marker in markers],
+                "meta": {"q": q, "count": len(markers)},
+            })
 
         raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
 
