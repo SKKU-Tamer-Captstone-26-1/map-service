@@ -298,6 +298,7 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
         "isOpen": _compute_is_open(open_time, close_time),
         "rating": f.get("rating"),
         "reviewCount": f.get("review_count"),
+        "menu": f.get("menu") or [],
         "inventory": f.get("inventory") or [],
         "publishedRevision": marker["published_revision"],
         "publishedAt": marker["published_at"],
