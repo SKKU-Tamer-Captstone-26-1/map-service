@@ -273,6 +273,15 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
         else ""
     )
 
+    # Image URLs: prefer array field; fall back to legacy scalar
+    raw_urls = f.get("image_urls")
+    if isinstance(raw_urls, list):
+        image_urls = [u for u in raw_urls if isinstance(u, str) and u][:10]
+    elif f.get("image_url"):
+        image_urls = [f["image_url"]]
+    else:
+        image_urls = []
+
     return {
         "id": marker["id"],
         "placeRef": marker["place_ref"],
@@ -282,7 +291,8 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
         "longitude": marker["longitude"],
         "iconKey": marker["icon_key"],
         "visibility": marker["visibility"],
-        "imageUrl": f.get("image_url") or "",
+        "imageUrls": image_urls,
+        "imageUrl": image_urls[0] if image_urls else "",
         "address": address,
         "hours": hours,
         "isOpen": _compute_is_open(open_time, close_time),
