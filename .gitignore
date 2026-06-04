@@ -9,3 +9,10 @@ data/raw/
 data/normalized/
 map_markers_view.html
 markers_export.csv
+data/canonical_edit.json
+map_service_dump.sql
+map_service_mapview_dump.sql
+map_service_extensions_dump.sql
+map_service_clean.sql
+map_service_import.sql
+map_service_import2.sql
