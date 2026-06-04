@@ -273,6 +273,155 @@ GET /v1/map/markers?bbox=126.70,37.40,127.20,37.75&layers=bar,pub,liquor_shop&li
 GET /v1/map/markers?bbox=126.70,37.40,127.20,37.75&layers=bar,pub,liquor_shop&limit=500&offset=500
 ```
 
+## Production API (Cloud Run)
+
+배포된 read-only API 엔드포인트:
+
+```
+Base URL: https://map-service-44649239380.asia-northeast3.run.app
+```
+
+```text
+GET /healthz
+GET /v1/map/layers
+GET /v1/map/markers?bbox=minLon,minLat,maxLon,maxLat&layers=bar,pub&limit=200&offset=0
+GET /v1/map/search?q=검색어
+```
+
+인프라:
+- Cloud Run (asia-northeast3, min-instances=0, max-instances=3)
+- Cloud SQL PostgreSQL 16 + PostGIS (`on-the-block-2026:asia-northeast3:map-service-db`)
+- GCS 이미지 버킷: `gs://on-the-block-place-media/venues/{place_id}/`
+
+로컬 개발은 기존 `run-client-map-dev.ps1` 사용. Cloud Run 연결은 `run-client-map-prod.ps1` 사용.
+
+---
+
+## 외부 서비스 연동 가이드
+
+### Flutter 클라이언트
+
+REST API를 직접 호출합니다. DB 직접 접근 금지.
+
+```
+GET /v1/map/markers  → 지도 마커 표시 (bbox 기반)
+GET /v1/map/search   → 장소 텍스트 검색
+```
+
+marker 응답의 `filter_json` 기반 필드:
+
+| 필드 | 타입 | 내용 |
+|---|---|---|
+| `imageUrls` | `string[]` | 장소 사진 URL 목록 (최대 10장) |
+| `address` | `string` | 도로명 주소 (시도 접두어 제거) |
+| `hours` | `string` | 영업시간 표시용 (예: `19:00 - 02:00`) |
+| `isOpen` | `bool?` | 서버 KST 기준 실시간 계산 |
+| `rating` | `number?` | 평점 (bar/pub만, liquor_shop/outdoor 없음) |
+| `reviewCount` | `int?` | 리뷰 수 (bar/pub만) |
+| `menu` | `object[]` | 메뉴 항목 — bar/pub 전용 |
+| `inventory` | `object[]` | 재고 항목 — liquor_shop 전용 |
+
+### 관리자 웹 (Admin Web)
+
+**현재 (Write API 미구현):** `scripts/tools/patch_canonical_filter_json.py` 스크립트로 직접 DB 패치.
+
+**향후 Write API 구현 예정 엔드포인트:**
+
+```
+PATCH /v1/map/markers/{id}           → 영업시간·메뉴·재고 수정
+POST  /v1/map/markers/{id}/images/upload-url  → GCS Signed URL 발급
+PATCH /v1/map/markers/{id}/images    → image_urls 목록 업데이트
+PATCH /v1/map/markers/{id}/visibility → visible ↔ hidden 전환
+```
+
+**이미지 업로드 흐름 (Write API 구현 후):**
+
+```
+1. Admin Web → POST /v1/map/markers/{id}/images/upload-url
+   ← GCS Signed URL 반환
+
+2. Admin Web → GCS 직접 업로드 (map-service 거치지 않음)
+   gs://on-the-block-place-media/venues/{place_id}/{uuid}.jpg
+
+3. Admin Web → PATCH /v1/map/markers/{id}/images
+   body: { "image_urls": ["https://storage.googleapis.com/..."] }
+   ← filter_json.image_urls 업데이트
+```
+
+**제약:**
+- Admin Web은 map-service DB에 직접 접근하지 않습니다.
+- 모든 쓰기는 Write API를 통해서만 수행합니다.
+
+### 추천 시스템 (Recommendation Service)
+
+map-service DB에 직접 접근하지 않습니다. REST API 또는 이벤트 기반 동기화만 허용됩니다.
+
+**현재 구현된 연동 방식:**
+
+`scripts/seed_venue_inventory.py` — 로컬 개발용 단방향 시드:
+- map-service DB에서 `visibility=visible` liquor_shop 마커 조회
+- recommendation-service `venue_snapshots` + `venue_inventory_snapshots` 생성
+- `inventory.beverage_id` → recommendation-service `beverage_items.id` (canonical 음료 UUID)
+
+**향후 동기화 방식 (계획):**
+
+```
+map-service
+  └─ 마커 데이터 변경 시 이벤트 발행 (map_view.marker_publication_events)
+       ↓
+recommendation-service
+  └─ MapSnapshotImportService.import_snapshot_event()
+       └─ venue_snapshots 업데이트
+       └─ venue_inventory_snapshots 업데이트 (beverage_id 참조)
+```
+
+**재고 데이터 구조 (liquor_shop filter_json.inventory):**
+
+```json
+[
+  {
+    "beverage_id": "846aab49-...",
+    "name_ko": "더 맥캘란 12년 더블 캐스크",
+    "name_en": "The Macallan 12 Years Double Cask",
+    "price_krw": 128000
+  }
+]
+```
+
+`beverage_id`는 recommendation-service `beverage_items.id` (canonical UUID)를 참조합니다. 동일한 술이 여러 리쿼샵에 있어도 `beverage_id`가 동일하므로 크로스 벤뉴 검색/비교가 가능합니다.
+
+**제약:**
+- recommendation-service는 map-service DB에 직접 읽기/쓰기 금지.
+- recommendation-service가 보유한 venue 데이터는 map-service snapshot의 파생(derived) 데이터이며 canonical이 아닙니다.
+
+---
+
+## Canonical 마커 데이터 관리
+
+현재 canonical(visibility=visible) 마커 10개의 데이터는 `scripts/tools/patch_canonical_filter_json.py`가 단일 소스입니다.
+
+DB 초기화 또는 Cloud SQL 재배포 후 데이터 복원:
+
+```bash
+python -m scripts.tools.patch_canonical_filter_json --apply
+```
+
+Dry-run 확인:
+
+```bash
+python -m scripts.tools.patch_canonical_filter_json
+```
+
+`filter_json` 구조 요약:
+
+| 레이어 | 필드 |
+|---|---|
+| 공통 | `open_time`, `close_time`, `image_urls`, `description`, `road_address` |
+| bar / pub | + `menu: [{name, desc, price_krw}]` |
+| liquor_shop | + `inventory: [{beverage_id, name_ko, name_en, price_krw}]` |
+
+---
+
 ## Data Bootstrap Direction
 
 Research artifacts under `docs/research/` and `data/bootstrap/` are proposals only. Public/open data can enter candidate staging for later admin review, but must not be inserted directly into canonical places or `map_view`.
