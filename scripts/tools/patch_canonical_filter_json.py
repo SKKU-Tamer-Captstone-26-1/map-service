@@ -15,119 +15,198 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.db.verify_map_view_schema import resolve_database_url
 
 
-# open_time / close_time: "HH:MM" (24h). "24:00" = midnight without crossing-midnight ambiguity.
-# menu items: [{"name": str, "desc": str, "price_krw": int}]
-# image_urls: list of photo URLs (filled via admin web; empty array = no photos yet)
-PATCHES = {
-    "055be570-86b9-547b-9972-8aa73e5326e3": {  # 호빈 (bar)
-        "open_time": "18:00", "close_time": "02:00",
-        "rating": 4.2, "review_count": 18, "image_urls": [],
-        "menu": [
-            {"name": "하이볼", "desc": "산토리 위스키 베이스", "price_krw": 9000},
-            {"name": "모히또", "desc": "민트, 라임, 럼", "price_krw": 12000},
-            {"name": "소곱창볶음", "desc": "안주 대표 메뉴", "price_krw": 18000},
-        ],
+# Single source of truth for canonical marker filter_json overrides.
+#
+# Each entry has:
+#   "set"    — fields to merge (overwrite) via jsonb ||
+#   "remove" — keys to delete after merge (e.g. "rating" not applicable to a venue)
+#
+# open_time / close_time: "HH:MM" 24h. "24:00" = midnight.
+# image_urls: placeholder empty list; fill via admin web / GCS after upload.
+# menu: [{"name", "desc", "price_krw"}]  — bar / pub
+# inventory: [{"beverage_id", "name_ko", "name_en", "price_krw"}]  — liquor_shop
+#            beverage_id references recommendation-service.beverage_items.id
+
+PATCHES: list[dict] = [
+    {
+        "id": "055be570-86b9-547b-9972-8aa73e5326e3",  # 호빈 (bar)
+        "set": {
+            "open_time": "23:00",
+            "close_time": "06:00",
+            "description": "The latest close bar in Seoul",
+            "image_urls": [],
+            "menu": [
+                {"name": "Jameson Highball", "desc": "Jameson based highball", "price_krw": 11000},
+                {"name": "Jameson Shot",     "desc": "Jameson Shot",           "price_krw": 10000},
+                {"name": "Beer",             "desc": "Bottled Beer",           "price_krw": 10000},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "d6cf7a04-2ff8-53f8-9079-dbd2d9bd5bef": {  # 앨리스 (bar)
-        "open_time": "17:00", "close_time": "01:00",
-        "rating": 4.0, "review_count": 12, "image_urls": [],
-        "menu": [
-            {"name": "Alice in Wonderland", "desc": "블루 큐라소, 버터플라이피", "price_krw": 19000},
-            {"name": "Mad Hatter", "desc": "얼그레이 인퓨즈드 진, 레몬", "price_krw": 18000},
-            {"name": "White Rabbit", "desc": "코코넛 럼, 패션후르츠", "price_krw": 16000},
-        ],
+    {
+        "id": "d6cf7a04-2ff8-53f8-9079-dbd2d9bd5bef",  # 앨리스 (bar)
+        "set": {
+            "open_time": "19:00",
+            "close_time": "02:00",
+            "road_address": "서울특별시 강남구 도산대로55길 47 지하 1층",
+            "description": "The Bar in wonderland",
+            "image_urls": [],
+            "menu": [
+                {"name": "Foggy Fongo", "desc": "", "price_krw": 27000},
+                {"name": "Zolla GGUL",  "desc": "", "price_krw": 27000},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "6f18761d-f009-5469-9f65-947523c6b0c0": {  # 제스트 (bar)
-        "open_time": "19:00", "close_time": "03:00",
-        "rating": 4.5, "review_count": 31, "image_urls": [],
-        "menu": [
-            {"name": "Zest Signature", "desc": "유자 인퓨즈드 진, 통카빈", "price_krw": 19000},
-            {"name": "Old Fashioned", "desc": "버번, 앙고스투라 비터스", "price_krw": 18000},
-            {"name": "Paloma", "desc": "테킬라, 자몽, 소금", "price_krw": 16000},
-        ],
+    {
+        "id": "6f18761d-f009-5469-9f65-947523c6b0c0",  # 제스트 (bar)
+        "set": {
+            "open_time": "19:00",
+            "close_time": "02:00",
+            "image_urls": [],
+            "menu": [
+                {"name": "Z&T",               "desc": "", "price_krw": 25000},
+                {"name": "City Bee's Knees",   "desc": "", "price_krw": 25000},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "86633237-8df0-5a5d-ac9a-ab4f91a35fff": {  # 더몰트샵 (liquor_shop)
-        "open_time": "10:00", "close_time": "22:00",
-        "rating": 4.3, "review_count": 9, "image_urls": [],
+    {
+        "id": "05835c27-7fe8-5265-9a05-c5b59198259d",  # 파인앤코 (bar)
+        "set": {
+            "open_time": "18:00",
+            "close_time": "02:00",
+            "image_urls": [],
+            "menu": [
+                {"name": "Nuruk",  "desc": "", "price_krw": 26000},
+                {"name": "Yogurt", "desc": "", "price_krw": 26000},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "bf053be4-8e98-57ea-91cd-4e9c6b451e69": {  # 서울집시 (pub)
-        "open_time": "17:00", "close_time": "01:00",
-        "rating": 4.1, "review_count": 22, "image_urls": [],
-        "menu": [
-            {"name": "기네스 파인트", "desc": "아이리시 스타우트", "price_krw": 12000},
-            {"name": "하이네켄 파인트", "desc": "네덜란드 라거", "price_krw": 10000},
-            {"name": "피쉬 앤 칩스", "desc": "타르타르소스 포함", "price_krw": 18000},
-        ],
+    {
+        "id": "ac64748c-1cbd-577c-a314-af3d59946355",  # 비바라비다 (bar)
+        "set": {
+            "open_time": "19:00",
+            "close_time": "02:00",
+            "image_urls": [],
+            "menu": [],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "05835c27-7fe8-5265-9a05-c5b59198259d": {  # 파인앤코 (bar)
-        "open_time": "18:00", "close_time": "02:00",
-        "rating": 4.4, "review_count": 27, "image_urls": [],
-        "menu": [
-            {"name": "Fine & Co. Martini", "desc": "드라이 진, 올리브 워터", "price_krw": 24000},
-            {"name": "Negroni", "desc": "진, 캄파리, 스위트 베르무트", "price_krw": 20000},
-            {"name": "Whiskey Sour", "desc": "버번, 레몬, 에그화이트", "price_krw": 19000},
-        ],
+    {
+        "id": "bb145fb3-6232-5155-9c16-eaa01e67c7b2",  # 빌라레코드 (bar)
+        "set": {
+            "open_time": "19:00",
+            "close_time": "02:00",
+            "image_urls": [],
+            "menu": [
+                {"name": "Molecular Cocktails", "desc": "", "price_krw": 25000},
+                {"name": "Classical Cocktails", "desc": "", "price_krw": 25000},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "ac64748c-1cbd-577c-a314-af3d59946355": {  # 비바라비다 (bar)
-        "open_time": "18:00", "close_time": "02:00",
-        "rating": 4.3, "review_count": 15, "image_urls": [],
-        "menu": [
-            {"name": "Margarita", "desc": "블랑코 테킬라, 라임, 소금 테두리", "price_krw": 16000},
-            {"name": "Viva Signature", "desc": "메스칼, 히비스커스, 아과 프레스카", "price_krw": 20000},
-            {"name": "Mojito", "desc": "럼, 민트, 라임, 소다", "price_krw": 15000},
-        ],
+    {
+        "id": "92c27fd6-b5d3-5bcb-963a-d5edd3987398",  # 크리켓서울 (bar)
+        "set": {
+            "open_time": "19:00",
+            "close_time": "02:00",
+            "image_urls": [],
+            "menu": [
+                {"name": "GGeek Beer", "desc": "", "price_krw": 15000},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "bb145fb3-6232-5155-9c16-eaa01e67c7b2": {  # 빌라레코드 (bar)
-        "open_time": "19:00", "close_time": "03:00",
-        "rating": 4.6, "review_count": 43, "image_urls": [],
-        "menu": [
-            {"name": "Villa Signature", "desc": "스모크드 로즈마리, 프로프라이어터리 진 블렌드", "price_krw": 22000},
-            {"name": "Old Fashioned", "desc": "아티산 비터스, 핸드 카빙 아이스", "price_krw": 18000},
-            {"name": "Macallan 18yo", "desc": "싱글 몰트, 셰리 오크 캐스크", "price_krw": 35000},
-        ],
+    {
+        "id": "86633237-8df0-5a5d-ac9a-ab4f91a35fff",  # 더몰트샵 (liquor_shop)
+        "set": {
+            "open_time": "10:00",
+            "close_time": "22:00",
+            "image_urls": [],
+            # beverage_id → recommendation-service.beverage_items.id (canonical)
+            "inventory": [
+                {"beverage_id": "846aab49-a7d0-5bfb-b987-acf20abe8015",
+                 "name_ko": "더 맥캘란 12년 더블 캐스크",
+                 "name_en": "The Macallan 12 Years Double Cask",
+                 "price_krw": 128000},
+                {"beverage_id": "8c3dbc78-e8c9-5187-ad08-cf0b5416995d",
+                 "name_ko": "글렌피딕 12년",
+                 "name_en": "Glenfiddich 12 Year Old",
+                 "price_krw": 115000},
+                {"beverage_id": "d8ec2f75-f3b7-50b9-8be8-9dd8de031a54",
+                 "name_ko": "라프로익 10년",
+                 "name_en": "Laphroaig 10 Year Old",
+                 "price_krw": 119000},
+                {"beverage_id": "17efb137-cdbb-5ca1-8734-f5705b50081b",
+                 "name_ko": "버팔로 트레이스 버번",
+                 "name_en": "Buffalo Trace Bourbon",
+                 "price_krw": 89000},
+                {"beverage_id": "2ac1b120-0319-5017-bea6-65b443e50acf",
+                 "name_ko": "제임슨 아이리시 위스키",
+                 "name_en": "Jameson Irish Whiskey",
+                 "price_krw": 79000},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "92c27fd6-b5d3-5bcb-963a-d5edd3987398": {  # 크리켓서울 (bar)
-        "open_time": "18:00", "close_time": "02:00",
-        "rating": 4.2, "review_count": 19, "image_urls": [],
-        "menu": [
-            {"name": "Cricket Highball", "desc": "산토리 토키, 탄산수", "price_krw": 15000},
-            {"name": "Classic Martini", "desc": "런던 드라이 진, 드라이 베르무트", "price_krw": 18000},
-            {"name": "Aperol Spritz", "desc": "아페롤, 프로세코, 소다", "price_krw": 16000},
-        ],
+    {
+        "id": "bf053be4-8e98-57ea-91cd-4e9c6b451e69",  # 서울집시 (pub)
+        "set": {
+            "open_time": "17:00",
+            "close_time": "01:00",
+            "image_urls": [],
+            "menu": [
+                {"name": "Craft Beers", "desc": "", "price_krw": 0},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-    "d7984c6a-d17c-585d-8e2c-14daf0c7975a": {  # 만리199 (pub)
-        "open_time": "17:00", "close_time": "24:00",
-        "rating": 4.0, "review_count": 11, "image_urls": [],
-        "menu": [
-            {"name": "크래프트 맥주", "desc": "오늘의 생맥주 (탭 변동)", "price_krw": 10000},
-            {"name": "감자튀김", "desc": "사이드 안주", "price_krw": 8000},
-            {"name": "피자", "desc": "치즈 마르게리타", "price_krw": 20000},
-        ],
+    {
+        "id": "d7984c6a-d17c-585d-8e2c-14daf0c7975a",  # 만리199 (pub)
+        "set": {
+            "open_time": "17:00",
+            "close_time": "24:00",
+            "image_urls": [],
+            "menu": [
+                {"name": "Craft Beers", "desc": "", "price_krw": 0},
+            ],
+        },
+        "remove": ["rating", "review_count"],
     },
-}
+]
 
 
 def run(database_url: str, *, dry_run: bool) -> None:
     with psycopg.connect(database_url, autocommit=True) as conn:
         with conn.cursor() as cur:
-            for marker_id, patch in PATCHES.items():
+            for entry in PATCHES:
+                marker_id = entry["id"]
+                patch = json.dumps(entry["set"], ensure_ascii=False)
+                remove_keys = entry.get("remove", [])
+
                 if dry_run:
-                    print(f"[dry-run] {marker_id}: {patch}")
+                    print(f"[dry-run] {marker_id}: set={list(entry['set'])} remove={remove_keys}")
                     continue
+
+                remove_clause = " ".join(f"- '{k}'" for k in remove_keys)
                 cur.execute(
-                    """
+                    f"""
                     UPDATE map_view.markers
-                    SET filter_json = filter_json || %s::jsonb,
+                    SET filter_json = (filter_json || %s::jsonb) {remove_clause},
                         updated_at  = now()
                     WHERE id = %s::uuid
                     """,
-                    (json.dumps(patch, ensure_ascii=False), marker_id),
+                    (patch, marker_id),
                 )
                 print(f"patched {marker_id} ({cur.rowcount} row)")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Add hours/rating/review_count to canonical marker filter_json.")
+    parser = argparse.ArgumentParser(
+        description="Overwrite canonical marker filter_json with the authoritative seed data."
+    )
     parser.add_argument("--database-url")
     parser.add_argument("--apply", action="store_true", help="Write to DB (default: dry-run)")
     args = parser.parse_args()
