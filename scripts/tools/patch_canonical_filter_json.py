@@ -31,6 +31,7 @@ PATCHES: list[dict] = [
     {
         "id": "055be570-86b9-547b-9972-8aa73e5326e3",  # 호빈 (bar)
         "set": {
+            "rating": 4.2, "review_count": 18,
             "open_time": "23:00",
             "close_time": "06:00",
             "description": "The latest close bar in Seoul",
@@ -41,11 +42,12 @@ PATCHES: list[dict] = [
                 {"name": "Beer",             "desc": "Bottled Beer",           "price_krw": 10000},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "d6cf7a04-2ff8-53f8-9079-dbd2d9bd5bef",  # 앨리스 (bar)
         "set": {
+            "rating": 4.0, "review_count": 12,
             "open_time": "19:00",
             "close_time": "02:00",
             "road_address": "서울특별시 강남구 도산대로55길 47 지하 1층",
@@ -56,11 +58,12 @@ PATCHES: list[dict] = [
                 {"name": "Zolla GGUL",  "desc": "", "price_krw": 27000},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "6f18761d-f009-5469-9f65-947523c6b0c0",  # 제스트 (bar)
         "set": {
+            "rating": 4.5, "review_count": 31,
             "open_time": "19:00",
             "close_time": "02:00",
             "image_urls": [],
@@ -69,11 +72,12 @@ PATCHES: list[dict] = [
                 {"name": "City Bee's Knees",   "desc": "", "price_krw": 25000},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "05835c27-7fe8-5265-9a05-c5b59198259d",  # 파인앤코 (bar)
         "set": {
+            "rating": 4.4, "review_count": 27,
             "open_time": "18:00",
             "close_time": "02:00",
             "image_urls": [],
@@ -82,21 +86,23 @@ PATCHES: list[dict] = [
                 {"name": "Yogurt", "desc": "", "price_krw": 26000},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "ac64748c-1cbd-577c-a314-af3d59946355",  # 비바라비다 (bar)
         "set": {
+            "rating": 4.3, "review_count": 15,
             "open_time": "19:00",
             "close_time": "02:00",
             "image_urls": [],
             "menu": [],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "bb145fb3-6232-5155-9c16-eaa01e67c7b2",  # 빌라레코드 (bar)
         "set": {
+            "rating": 4.6, "review_count": 43,
             "open_time": "19:00",
             "close_time": "02:00",
             "image_urls": [],
@@ -105,11 +111,12 @@ PATCHES: list[dict] = [
                 {"name": "Classical Cocktails", "desc": "", "price_krw": 25000},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "92c27fd6-b5d3-5bcb-963a-d5edd3987398",  # 크리켓서울 (bar)
         "set": {
+            "rating": 4.2, "review_count": 19,
             "open_time": "19:00",
             "close_time": "02:00",
             "image_urls": [],
@@ -117,7 +124,7 @@ PATCHES: list[dict] = [
                 {"name": "GGeek Beer", "desc": "", "price_krw": 15000},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "86633237-8df0-5a5d-ac9a-ab4f91a35fff",  # 더몰트샵 (liquor_shop)
@@ -154,6 +161,7 @@ PATCHES: list[dict] = [
     {
         "id": "bf053be4-8e98-57ea-91cd-4e9c6b451e69",  # 서울집시 (pub)
         "set": {
+            "rating": 4.1, "review_count": 22,
             "open_time": "17:00",
             "close_time": "01:00",
             "image_urls": [],
@@ -161,11 +169,12 @@ PATCHES: list[dict] = [
                 {"name": "Craft Beers", "desc": "", "price_krw": 0},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
     {
         "id": "d7984c6a-d17c-585d-8e2c-14daf0c7975a",  # 만리199 (pub)
         "set": {
+            "rating": 4.0, "review_count": 11,
             "open_time": "17:00",
             "close_time": "24:00",
             "image_urls": [],
@@ -173,7 +182,7 @@ PATCHES: list[dict] = [
                 {"name": "Craft Beers", "desc": "", "price_krw": 0},
             ],
         },
-        "remove": ["rating", "review_count"],
+        "remove": [],
     },
 ]
 
