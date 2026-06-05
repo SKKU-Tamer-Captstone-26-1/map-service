@@ -276,8 +276,16 @@ def _format_time(t: str) -> str:
     return f"{h % 24:02d}:{m:02d}"
 
 
+def _compute_rating(reviews: list[dict[str, Any]]) -> float | None:
+    valid = [r["rating"] for r in reviews if isinstance(r.get("rating"), (int, float))]
+    if not valid:
+        return None
+    return round(sum(valid) / len(valid), 1)
+
+
 def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
     f: dict[str, Any] = marker.get("filter_json") or {}
+    reviews: list[dict[str, Any]] = f.get("reviews") or []
 
     raw_address = f.get("road_address") or f.get("address") or ""
     address = (
@@ -318,11 +326,11 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
         "address": address,
         "hours": hours,
         "isOpen": _compute_is_open(open_time, close_time),
-        "rating": f.get("rating"),
-        "reviewCount": f.get("review_count"),
+        "rating": _compute_rating(reviews),
+        "reviewCount": len(reviews) if reviews else None,
         "menu": f.get("menu") or [],
         "inventory": f.get("inventory") or [],
-        "reviews": f.get("reviews") or [],
+        "reviews": reviews,
         "publishedRevision": marker["published_revision"],
         "publishedAt": marker["published_at"],
         "updatedAt": marker["updated_at"],
