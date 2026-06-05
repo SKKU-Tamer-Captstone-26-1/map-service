@@ -366,8 +366,8 @@ class MapReadApi:
     ) -> tuple[int, dict[str, Any]]:
         if method == "OPTIONS":
             return HTTPStatus.NO_CONTENT, {}
-        if method != "GET":
-            raise ApiError(HTTPStatus.METHOD_NOT_ALLOWED, "method_not_allowed", "only GET is supported")
+        if method not in ("GET", "POST"):
+            raise ApiError(HTTPStatus.METHOD_NOT_ALLOWED, "method_not_allowed", "only GET and POST are supported")
 
         if path == "/healthz":
             return success({"service": "map-service", "status": "ok"})
