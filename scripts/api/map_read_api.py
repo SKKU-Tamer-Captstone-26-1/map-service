@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -155,6 +156,27 @@ class MapViewRepository:
                 )
                 return [dict(row) for row in cursor.fetchall()]
 
+    def add_review(self, marker_id: str, review: dict[str, Any]) -> None:
+        with psycopg.connect(self.database_url) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE map_view.markers
+                    SET filter_json = jsonb_set(
+                        filter_json,
+                        '{reviews}',
+                        COALESCE(filter_json->'reviews', '[]'::jsonb) || %s::jsonb,
+                        true
+                    ),
+                    updated_at = now()
+                    WHERE id = %s::uuid AND visibility = 'visible'
+                    """,
+                    (json.dumps([review], ensure_ascii=False), marker_id),
+                )
+                if cursor.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "marker not found")
+            connection.commit()
+
     def search_markers(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
         with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
             with connection.cursor() as cursor:
@@ -300,6 +322,7 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
         "reviewCount": f.get("review_count"),
         "menu": f.get("menu") or [],
         "inventory": f.get("inventory") or [],
+        "reviews": f.get("reviews") or [],
         "publishedRevision": marker["published_revision"],
         "publishedAt": marker["published_at"],
         "updatedAt": marker["updated_at"],
@@ -326,11 +349,21 @@ def error_payload(error: ApiError) -> tuple[int, dict[str, Any]]:
     return error.status, {"ok": False, "error": {"code": error.code, "message": error.message}}
 
 
+_REVIEW_PATH_RE = re.compile(r"^/v1/map/markers/([0-9a-f-]+)/reviews$")
+
+
 class MapReadApi:
     def __init__(self, repository: MapViewRepository) -> None:
         self.repository = repository
 
-    def handle(self, method: str, path: str, query_params: dict[str, list[str]]) -> tuple[int, dict[str, Any]]:
+    def handle(
+        self,
+        method: str,
+        path: str,
+        query_params: dict[str, list[str]],
+        *,
+        body: dict[str, Any] | None = None,
+    ) -> tuple[int, dict[str, Any]]:
         if method == "OPTIONS":
             return HTTPStatus.NO_CONTENT, {}
         if method != "GET":
@@ -367,6 +400,26 @@ class MapReadApi:
                 "meta": {"q": q, "count": len(markers)},
             })
 
+        review_match = _REVIEW_PATH_RE.match(path)
+        if review_match and method == "POST":
+            marker_id = review_match.group(1)
+            data = body or {}
+            author = str(data.get("author") or "익명").strip()[:50] or "익명"
+            rating = data.get("rating")
+            review_body = str(data.get("body") or "").strip()
+            if not isinstance(rating, int) or not 1 <= rating <= 5:
+                raise ApiError(HTTPStatus.BAD_REQUEST, "rating_invalid", "rating must be 1-5")
+            if not review_body:
+                raise ApiError(HTTPStatus.BAD_REQUEST, "body_required", "body is required")
+            review = {
+                "author": author,
+                "rating": rating,
+                "body": review_body,
+                "date_label": "방금 전",
+            }
+            self.repository.add_review(marker_id, review)
+            return success({"review": review})
+
         raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
 
 
@@ -377,7 +430,7 @@ def make_handler(api: MapReadApi, cors_origin: str) -> type[BaseHTTPRequestHandl
 
         def do_GET(self) -> None:
             try:
-                self.respond(*api.handle("GET", self.path_only(), self.query_params()))
+                self.respond(*api.handle("GET", self.path_only(), self.query_params(), body=None))
             except ApiError as error:
                 self.respond(*error_payload(error))
             except Exception:
@@ -387,8 +440,20 @@ def make_handler(api: MapReadApi, cors_origin: str) -> type[BaseHTTPRequestHandl
                 )
 
         def do_POST(self) -> None:
-            error = ApiError(HTTPStatus.METHOD_NOT_ALLOWED, "method_not_allowed", "only GET is supported")
-            self.respond(*error_payload(error))
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length) if length > 0 else b""
+                body = json.loads(raw) if raw else {}
+                if not isinstance(body, dict):
+                    body = {}
+                self.respond(*api.handle("POST", self.path_only(), self.query_params(), body=body))
+            except ApiError as error:
+                self.respond(*error_payload(error))
+            except Exception:
+                self.respond(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {"ok": False, "error": {"code": "internal_error", "message": "internal server error"}},
+                )
 
         def path_only(self) -> str:
             return urlparse(self.path).path
