@@ -387,13 +387,7 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
     f: dict[str, Any] = marker.get("filter_json") or {}
     reviews: list[dict[str, Any]] = f.get("reviews") or []
 
-    raw_address = f.get("road_address") or f.get("address") or ""
-    address = (
-        raw_address
-        .removeprefix("서울특별시 ")
-        .removeprefix("경기도 ")
-        .strip()
-    )
+    address = (f.get("road_address") or f.get("address") or "").strip()
 
     open_time: str | None = f.get("open_time")
     close_time: str | None = f.get("close_time")
@@ -490,12 +484,7 @@ def snapshot_event(marker: dict[str, Any]) -> dict[str, Any]:
     )
     event_type = "place.updated" if updated_at != published_at else "place.published"
     event_id = f"evt_{_short_hash(place_id + place_revision)}"
-    address = (
-        (f.get("road_address") or f.get("address") or "")
-        .removeprefix("서울특별시 ")
-        .removeprefix("경기도 ")
-        .strip()
-    )
+    address = (f.get("road_address") or f.get("address") or "").strip()
     return {
         "contract_version": "map_snapshot_event_v1",
         "event_id": event_id,
