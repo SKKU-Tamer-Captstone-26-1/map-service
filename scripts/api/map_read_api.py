@@ -307,6 +307,10 @@ def _format_time(t: str) -> str:
     return f"{h % 24:02d}:{m:02d}"
 
 
+def _format_date(dt: datetime) -> str:
+    return dt.strftime("%b ") + str(dt.day) + dt.strftime(", %Y")
+
+
 def _compute_rating(reviews: list[dict[str, Any]]) -> float | None:
     valid = [r["rating"] for r in reviews if isinstance(r.get("rating"), (int, float))]
     if not valid:
@@ -462,7 +466,7 @@ class MapReadApi:
                 "profile_image_url": profile_image_url,
                 "rating": rating,
                 "body": review_body,
-                "date_label": datetime.now(_KST).strftime("%b %-d, %Y"),
+                "date_label": _format_date(datetime.now(_KST)),
             }
             self.repository.add_review(marker_id, review)
             return success({"review": review})
