@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -172,6 +173,36 @@ class MapViewRepository:
                     WHERE id = %s::uuid AND visibility = 'visible'
                     """,
                     (json.dumps([review], ensure_ascii=False), marker_id),
+                )
+                if cursor.rowcount == 0:
+                    raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "marker not found")
+            connection.commit()
+
+    def delete_review(self, marker_id: str, review_id: str) -> None:
+        with psycopg.connect(self.database_url) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE map_view.markers
+                    SET filter_json = jsonb_set(
+                        filter_json,
+                        '{reviews}',
+                        COALESCE(
+                            (
+                                SELECT jsonb_agg(r)
+                                FROM jsonb_array_elements(
+                                    COALESCE(filter_json->'reviews', '[]'::jsonb)
+                                ) AS r
+                                WHERE r->>'review_id' != %s
+                            ),
+                            '[]'::jsonb
+                        ),
+                        true
+                    ),
+                    updated_at = now()
+                    WHERE id = %s::uuid AND visibility = 'visible'
+                    """,
+                    (review_id, marker_id),
                 )
                 if cursor.rowcount == 0:
                     raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "marker not found")
@@ -358,6 +389,7 @@ def error_payload(error: ApiError) -> tuple[int, dict[str, Any]]:
 
 
 _REVIEW_PATH_RE = re.compile(r"^/v1/map/markers/([0-9a-f-]+)/reviews$")
+_REVIEW_DELETE_RE = re.compile(r"^/v1/map/markers/([0-9a-f-]+)/reviews/([0-9a-f-]+)$")
 
 
 class MapReadApi:
@@ -374,8 +406,8 @@ class MapReadApi:
     ) -> tuple[int, dict[str, Any]]:
         if method == "OPTIONS":
             return HTTPStatus.NO_CONTENT, {}
-        if method not in ("GET", "POST"):
-            raise ApiError(HTTPStatus.METHOD_NOT_ALLOWED, "method_not_allowed", "only GET and POST are supported")
+        if method not in ("GET", "POST", "DELETE"):
+            raise ApiError(HTTPStatus.METHOD_NOT_ALLOWED, "method_not_allowed", "only GET, POST, and DELETE are supported")
 
         if path == "/healthz":
             return success({"service": "map-service", "status": "ok"})
@@ -415,6 +447,7 @@ class MapReadApi:
             author_id = str(data.get("author_id") or "").strip()
             is_anonymous = bool(data.get("is_anonymous", False))
             author = str(data.get("author") or "Anonymous").strip()[:50] or "Anonymous"
+            profile_image_url = str(data.get("profile_image_url") or "").strip() or None
             rating = data.get("rating")
             review_body = str(data.get("body") or "").strip()
             if not isinstance(rating, int) or not 1 <= rating <= 5:
@@ -422,15 +455,24 @@ class MapReadApi:
             if not review_body:
                 raise ApiError(HTTPStatus.BAD_REQUEST, "body_required", "body is required")
             review = {
+                "review_id": str(uuid.uuid4()),
                 "author_id": author_id,
                 "author": author,
                 "is_anonymous": is_anonymous,
+                "profile_image_url": profile_image_url,
                 "rating": rating,
                 "body": review_body,
-                "date_label": "Just now",
+                "date_label": datetime.now(_KST).strftime("%b %-d, %Y"),
             }
             self.repository.add_review(marker_id, review)
             return success({"review": review})
+
+        delete_match = _REVIEW_DELETE_RE.match(path)
+        if delete_match and method == "DELETE":
+            marker_id = delete_match.group(1)
+            review_id = delete_match.group(2)
+            self.repository.delete_review(marker_id, review_id)
+            return success({"deleted": True})
 
         raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
 
@@ -467,6 +509,17 @@ def make_handler(api: MapReadApi, cors_origin: str) -> type[BaseHTTPRequestHandl
                     {"ok": False, "error": {"code": "internal_error", "message": "internal server error"}},
                 )
 
+        def do_DELETE(self) -> None:
+            try:
+                self.respond(*api.handle("DELETE", self.path_only(), self.query_params(), body=None))
+            except ApiError as error:
+                self.respond(*error_payload(error))
+            except Exception:
+                self.respond(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {"ok": False, "error": {"code": "internal_error", "message": "internal server error"}},
+                )
+
         def path_only(self) -> str:
             return urlparse(self.path).path
 
@@ -482,7 +535,7 @@ def make_handler(api: MapReadApi, cors_origin: str) -> type[BaseHTTPRequestHandl
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", cors_origin)
-            self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
