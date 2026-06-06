@@ -412,7 +412,9 @@ class MapReadApi:
         if review_match and method == "POST":
             marker_id = review_match.group(1)
             data = body or {}
-            author = str(data.get("author") or "익명").strip()[:50] or "익명"
+            author_id = str(data.get("author_id") or "").strip()
+            is_anonymous = bool(data.get("is_anonymous", False))
+            author = str(data.get("author") or "Anonymous").strip()[:50] or "Anonymous"
             rating = data.get("rating")
             review_body = str(data.get("body") or "").strip()
             if not isinstance(rating, int) or not 1 <= rating <= 5:
@@ -420,10 +422,12 @@ class MapReadApi:
             if not review_body:
                 raise ApiError(HTTPStatus.BAD_REQUEST, "body_required", "body is required")
             review = {
+                "author_id": author_id,
                 "author": author,
+                "is_anonymous": is_anonymous,
                 "rating": rating,
                 "body": review_body,
-                "date_label": "방금 전",
+                "date_label": "Just now",
             }
             self.repository.add_review(marker_id, review)
             return success({"review": review})
