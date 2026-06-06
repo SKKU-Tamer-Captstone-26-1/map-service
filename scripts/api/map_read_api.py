@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -208,6 +209,70 @@ class MapViewRepository:
                     raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "marker not found")
             connection.commit()
 
+    def list_snapshot_events(
+        self,
+        *,
+        cursor: str | None,
+        limit: int,
+    ) -> tuple[list[dict[str, Any]], str | None, bool]:
+        """Return (markers, next_cursor, has_more) for snapshot feed pagination.
+
+        cursor is an ISO-8601 timestamp; returns markers with updated_at > cursor,
+        ordered by (updated_at ASC, id ASC).  Returns at most limit + 1 rows to
+        detect whether a next page exists.
+        """
+        params: list[Any] = []
+        cursor_clause = ""
+        if cursor:
+            try:
+                cursor_dt = datetime.fromisoformat(cursor.replace("Z", "+00:00"))
+            except ValueError as error:
+                raise ApiError(
+                    HTTPStatus.BAD_REQUEST, "cursor_invalid", "cursor must be an ISO-8601 timestamp"
+                ) from error
+            cursor_clause = "AND m.updated_at > %s"
+            params.append(cursor_dt)
+        params.append(limit + 1)
+
+        with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor_obj:
+                cursor_obj.execute(
+                    f"""
+                    SELECT
+                      m.id::text AS id,
+                      m.place_ref::text AS place_ref,
+                      m.layer_code,
+                      m.label,
+                      ST_Y(m.location::geometry) AS latitude,
+                      ST_X(m.location::geometry) AS longitude,
+                      m.visibility::text AS visibility,
+                      m.filter_json,
+                      m.published_revision,
+                      m.published_at,
+                      m.updated_at
+                    FROM map_view.markers m
+                    JOIN map_view.marker_layers l ON l.code = m.layer_code
+                    WHERE m.visibility = 'visible'
+                      AND l.is_active = true
+                      {cursor_clause}
+                    ORDER BY m.updated_at ASC, m.id ASC
+                    LIMIT %s
+                    """,
+                    params,
+                )
+                rows = [dict(row) for row in cursor_obj.fetchall()]
+
+        has_more = len(rows) > limit
+        page = rows[:limit]
+        next_cursor: str | None = None
+        if has_more and page:
+            last_updated = page[-1]["updated_at"]
+            if isinstance(last_updated, datetime):
+                next_cursor = last_updated.isoformat()
+            else:
+                next_cursor = str(last_updated)
+        return page, next_cursor, has_more
+
     def search_markers(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
         with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
             with connection.cursor() as cursor:
@@ -372,6 +437,87 @@ def marker_response(marker: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _short_hash(value: str) -> str:
+    return hashlib.sha1(value.encode()).hexdigest()[:12]
+
+
+def _inventory_items(filter_json: dict[str, Any], place_revision: str) -> list[dict[str, Any]]:
+    items = filter_json.get("inventory") or []
+    result = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        source_id = str(item.get("source_beverage_id") or item.get("name_ko") or "")
+        inv_rev = f"inv_{_short_hash(source_id + place_revision)}"
+        result.append({
+            "inventory_revision": inv_rev,
+            "source_beverage_id": source_id or None,
+            "beverage_item_id": None,
+            "availability_status": "available",
+            "confidence": 0.9,
+            "last_seen_at": None,
+            "expires_at": None,
+        })
+    return result
+
+
+def _menu_items(filter_json: dict[str, Any], place_revision: str) -> list[dict[str, Any]]:
+    items = filter_json.get("menu") or []
+    result = []
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "")
+        menu_id = f"menu_{_short_hash(name + str(i) + place_revision)}"
+        result.append({
+            "menu_item_id": menu_id,
+            "menu_revision": f"mrev_{_short_hash(place_revision + str(i))}",
+            "menu_name": name or f"Item {i + 1}",
+            "status": "active",
+        })
+    return result
+
+
+def snapshot_event(marker: dict[str, Any]) -> dict[str, Any]:
+    f: dict[str, Any] = marker.get("filter_json") or {}
+    place_id = marker["id"]
+    pub_rev = str(marker.get("published_revision") or "0")
+    place_revision = f"rev_{pub_rev}"
+    updated_at = marker.get("updated_at") or marker.get("published_at")
+    published_at = marker.get("published_at")
+    occurred_at = (
+        updated_at.isoformat() if isinstance(updated_at, datetime) else str(updated_at or "")
+    )
+    event_type = "place.updated" if updated_at != published_at else "place.published"
+    event_id = f"evt_{_short_hash(place_id + place_revision)}"
+    address = (
+        (f.get("road_address") or f.get("address") or "")
+        .removeprefix("서울특별시 ")
+        .removeprefix("경기도 ")
+        .strip()
+    )
+    return {
+        "contract_version": "map_snapshot_event_v1",
+        "event_id": event_id,
+        "event_type": event_type,
+        "occurred_at": occurred_at,
+        "place_id": place_id,
+        "place_revision": place_revision,
+        "venue": {
+            "name": marker["label"],
+            "place_type": marker["layer_code"],
+            "status": "active",
+            "publication_status": "published",
+            "lat": marker["latitude"],
+            "lng": marker["longitude"],
+            "address": address or None,
+        },
+        "inventory": _inventory_items(f, place_revision),
+        "menus": _menu_items(f, place_revision),
+        "prices": [],
+    }
+
+
 def layer_response(layer: dict[str, Any]) -> dict[str, Any]:
     return {
         "code": layer["code"],
@@ -432,6 +578,27 @@ class MapReadApi:
                     },
                 }
             )
+
+        if path == "/internal/v1/recommendation/map-snapshot-events":
+            raw_cursor = query_params.get("cursor", [None])
+            cursor_val = raw_cursor[-1] if raw_cursor else None
+            raw_limit = query_params.get("limit", ["100"])
+            try:
+                snap_limit = max(1, min(int(raw_limit[-1]), 500))
+            except (ValueError, IndexError):
+                snap_limit = 100
+            markers, next_cursor, has_more = self.repository.list_snapshot_events(
+                cursor=cursor_val,
+                limit=snap_limit,
+            )
+            watermark = datetime.now(_KST).isoformat()
+            return success({
+                "cursor": cursor_val,
+                "next_cursor": next_cursor,
+                "has_more": has_more,
+                "snapshot_watermark": watermark,
+                "events": [snapshot_event(m) for m in markers],
+            })
 
         if path == "/v1/map/search":
             raw_q = query_params.get("q", [""])
