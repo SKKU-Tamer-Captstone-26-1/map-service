@@ -23,9 +23,10 @@ from scripts.db.verify_map_view_schema import resolve_database_url
 #
 # open_time / close_time: "HH:MM" 24h. "24:00" = midnight.
 # image_urls: placeholder empty list; fill via admin web / GCS after upload.
-# menu: [{"name", "desc", "price_krw"}]  — bar / pub
-# inventory: [{"beverage_id", "name_ko", "name_en", "price_krw"}]  — liquor_shop
+# menu: [{"name", "desc", "price_krw", "image_url"?}]  — bar / pub. image_url is optional.
+# inventory: [{"beverage_id", "name_ko", "name_en", "price_krw", "image_url"?}]  — liquor_shop
 #            beverage_id references recommendation-service.beverage_items.id
+#            image_url is optional (whiskies/{beverage_id}/... in on-the-block-product-media)
 
 PATCHES: list[dict] = [
     {
@@ -37,7 +38,8 @@ PATCHES: list[dict] = [
             "description": "The latest close bar in Seoul",
             "image_urls": [],
             "menu": [
-                {"name": "Jameson Highball", "desc": "Jameson based highball", "price_krw": 11000},
+                {"name": "Jameson Highball", "desc": "Jameson based highball", "price_krw": 11000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-place-media/menu/055be570-86b9-547b-9972-8aa73e5326e3/1f602f02-0480-431d-aedf-be8d8f374d85.jpg"},
                 {"name": "Jameson Shot",     "desc": "Jameson Shot",           "price_krw": 10000},
                 {"name": "Beer",             "desc": "Bottled Beer",           "price_krw": 10000},
             ],
@@ -141,7 +143,8 @@ PATCHES: list[dict] = [
                 {"beverage_id": "8c3dbc78-e8c9-5187-ad08-cf0b5416995d",
                  "name_ko": "글렌피딕 12년",
                  "name_en": "Glenfiddich 12 Year Old",
-                 "price_krw": 115000},
+                 "price_krw": 115000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-product-media/whiskies/8c3dbc78-e8c9-5187-ad08-cf0b5416995d/58501296-5a88-4dc4-a285-1d360317bd0e.jpg"},
                 {"beverage_id": "d8ec2f75-f3b7-50b9-8be8-9dd8de031a54",
                  "name_ko": "라프로익 10년",
                  "name_en": "Laphroaig 10 Year Old",
@@ -153,7 +156,8 @@ PATCHES: list[dict] = [
                 {"beverage_id": "2ac1b120-0319-5017-bea6-65b443e50acf",
                  "name_ko": "제임슨 아이리시 위스키",
                  "name_en": "Jameson Irish Whiskey",
-                 "price_krw": 79000},
+                 "price_krw": 79000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-product-media/whiskies/2ac1b120-0319-5017-bea6-65b443e50acf/00708b83-2e3c-4998-b43a-75c890189264.png"},
             ],
         },
         "remove": ["rating", "review_count"],
