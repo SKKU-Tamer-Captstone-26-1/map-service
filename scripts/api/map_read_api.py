@@ -26,6 +26,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.db.verify_map_view_schema import resolve_database_url
+from scripts.api.media_storage import ALLOWED_CONTENT_TYPES, MediaStorageService
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -157,6 +158,15 @@ class MapViewRepository:
                     """
                 )
                 return [dict(row) for row in cursor.fetchall()]
+
+    def marker_exists(self, marker_id: str) -> bool:
+        with psycopg.connect(self.database_url) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT 1 FROM map_view.markers WHERE id = %s::uuid AND visibility = 'visible'",
+                    (marker_id,),
+                )
+                return cursor.fetchone() is not None
 
     def add_review(self, marker_id: str, review: dict[str, Any]) -> None:
         with psycopg.connect(self.database_url) as connection:
@@ -519,6 +529,17 @@ def layer_response(layer: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_content_type(value: Any) -> str:
+    content_type = str(value or "").strip().lower()
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        raise ApiError(
+            HTTPStatus.BAD_REQUEST,
+            "content_type_invalid",
+            "content_type must be one of: " + ", ".join(sorted(ALLOWED_CONTENT_TYPES)),
+        )
+    return content_type
+
+
 def success(payload: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     return HTTPStatus.OK, {"ok": True, **payload}
 
@@ -529,11 +550,14 @@ def error_payload(error: ApiError) -> tuple[int, dict[str, Any]]:
 
 _REVIEW_PATH_RE = re.compile(r"^/v1/map/markers/([0-9a-f-]+)/reviews$")
 _REVIEW_DELETE_RE = re.compile(r"^/v1/map/markers/([0-9a-f-]+)/reviews/([0-9a-f-]+)$")
+_PLACE_PHOTO_UPLOAD_RE = re.compile(r"^/v1/map/markers/([0-9a-f-]+)/photos/upload-url$")
+_PRODUCT_PHOTO_UPLOAD_RE = re.compile(r"^/v1/map/products/([0-9A-Za-z_-]+)/photos/upload-url$")
 
 
 class MapReadApi:
-    def __init__(self, repository: MapViewRepository) -> None:
+    def __init__(self, repository: MapViewRepository, media_storage: MediaStorageService | None = None) -> None:
         self.repository = repository
+        self.media_storage = media_storage or MediaStorageService()
 
     def handle(
         self,
@@ -633,6 +657,30 @@ class MapReadApi:
             review_id = delete_match.group(2)
             self.repository.delete_review(marker_id, review_id)
             return success({"deleted": True})
+
+        place_photo_match = _PLACE_PHOTO_UPLOAD_RE.match(path)
+        if place_photo_match and method == "POST":
+            marker_id = place_photo_match.group(1)
+            data = body or {}
+            kind = str(data.get("kind") or "place").strip().lower()
+            content_type = _validate_content_type(data.get("content_type"))
+            if kind not in ("place", "menu"):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "kind_invalid", "kind must be 'place' or 'menu'")
+            if not self.repository.marker_exists(marker_id):
+                raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "marker not found")
+            if kind == "menu":
+                result = self.media_storage.generate_menu_photo_upload_url(marker_id, content_type)
+            else:
+                result = self.media_storage.generate_place_photo_upload_url(marker_id, content_type)
+            return success({"upload_url": result.upload_url, "object_url": result.object_url})
+
+        product_photo_match = _PRODUCT_PHOTO_UPLOAD_RE.match(path)
+        if product_photo_match and method == "POST":
+            product_id = product_photo_match.group(1)
+            data = body or {}
+            content_type = _validate_content_type(data.get("content_type"))
+            result = self.media_storage.generate_product_photo_upload_url(product_id, content_type)
+            return success({"upload_url": result.upload_url, "object_url": result.object_url})
 
         raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
 
