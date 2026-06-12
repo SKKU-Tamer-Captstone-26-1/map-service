@@ -4,9 +4,12 @@ import os
 import uuid
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any
 
 from google.auth import default as google_auth_default
 from google.auth import impersonated_credentials
+from google.auth.compute_engine import Credentials as ComputeEngineCredentials
+from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.cloud import storage
 
 
@@ -78,16 +81,20 @@ class MediaStorageService:
             expiration=UPLOAD_URL_EXPIRY,
             method="PUT",
             content_type=content_type,
+            **self._signing_kwargs(),
         )
         object_url = f"https://storage.googleapis.com/{bucket_name}/{object_name}"
         return UploadUrlResult(upload_url=upload_url, object_url=object_url)
 
     def _storage_client(self) -> storage.Client:
-        if self._client is not None:
-            return self._client
+        if self._client is None:
+            self._client = storage.Client()
+        return self._client
 
+    def _signing_kwargs(self) -> dict[str, Any]:
+        # Local dev: impersonate a service account that can self-sign (Signing credentials).
         if self.signing_service_account:
-            source_credentials, project = google_auth_default(
+            source_credentials, _project = google_auth_default(
                 scopes=["https://www.googleapis.com/auth/cloud-platform"]
             )
             credentials = impersonated_credentials.Credentials(
@@ -96,10 +103,19 @@ class MediaStorageService:
                 target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
                 lifetime=300,
             )
-            self._client = storage.Client(project=project, credentials=credentials)
-        else:
-            self._client = storage.Client()
-        return self._client
+            return {"credentials": credentials}
+
+        # Cloud Run: the attached compute service account can't sign locally, so sign via
+        # the IAM signBlob API using its own access token (requires
+        # roles/iam.serviceAccountTokenCreator granted to the SA on itself).
+        credentials, _project = google_auth_default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        credentials.refresh(GoogleAuthRequest())
+        service_account_email = getattr(credentials, "service_account_email", None)
+        if isinstance(credentials, ComputeEngineCredentials) and service_account_email:
+            return {"service_account_email": service_account_email, "access_token": credentials.token}
+        return {"credentials": credentials}
 
 
 def _require_extension(content_type: str) -> str:
