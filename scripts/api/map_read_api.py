@@ -492,7 +492,8 @@ def _menu_items(filter_json: dict[str, Any], place_revision: str) -> list[dict[s
             continue
         name = str(item.get("name") or "")
         menu_id = f"menu_{_short_hash(name + str(i) + place_revision)}"
-        catalog_ref = item.get("beverage_catalog_ref") or None
+        raw_catalog_ref = item.get("beverage_catalog_ref")
+        catalog_ref = raw_catalog_ref.strip() if isinstance(raw_catalog_ref, str) and raw_catalog_ref.strip() else None
         entry = {
             "menu_item_id": menu_id,
             "menu_revision": f"mrev_{_short_hash(place_revision + str(i))}",
