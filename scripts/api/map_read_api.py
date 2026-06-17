@@ -29,6 +29,11 @@ from scripts.db.verify_map_view_schema import resolve_database_url
 from scripts.api.media_storage import ALLOWED_CONTENT_TYPES, MediaStorageService
 
 
+# recommendation-service beverage_items 시드 계약과 일치해야 함:
+# beverage_items.id = uuid.uuid5(BEVERAGE_SEED_NAMESPACE, f"beverage:{catalog_key}")
+# catalog_key = "{category}.{beverage_slug}" (예: "whiskey.buffalo_trace_bourbon")
+BEVERAGE_SEED_NAMESPACE = uuid.UUID("6ad0a869-203c-56cb-95b9-c11a9416eb35")
+
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8088
 DEFAULT_LIMIT = 200
@@ -445,18 +450,33 @@ def _short_hash(value: str) -> str:
     return hashlib.sha1(value.encode()).hexdigest()[:12]
 
 
+def _resolve_beverage_item_id(catalog_ref: str | None) -> str | None:
+    """Derive recommendation-service's beverage_items.id from a catalog_key.
+
+    Must match recommendation-service's deterministic seed contract:
+    uuid.uuid5(BEVERAGE_SEED_NAMESPACE, f"beverage:{catalog_key}").
+    """
+    if not catalog_ref:
+        return None
+    return str(uuid.uuid5(BEVERAGE_SEED_NAMESPACE, f"beverage:{catalog_ref}"))
+
+
 def _inventory_items(filter_json: dict[str, Any], place_revision: str) -> list[dict[str, Any]]:
     items = filter_json.get("inventory") or []
     result = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        source_id = str(item.get("source_beverage_id") or item.get("name_ko") or "")
+        catalog_ref = item.get("beverage_catalog_ref") or None
+        source_id = str(
+            item.get("beverage_catalog_ref") or item.get("source_beverage_id") or item.get("name_ko") or ""
+        )
         inv_rev = f"inv_{_short_hash(source_id + place_revision)}"
         result.append({
             "inventory_revision": inv_rev,
             "source_beverage_id": source_id or None,
-            "beverage_item_id": None,
+            "beverage_catalog_ref": catalog_ref,
+            "beverage_item_id": _resolve_beverage_item_id(catalog_ref) if catalog_ref else None,
             "availability_status": "available",
             "confidence": 0.9,
             "last_seen_at": None,
@@ -473,12 +493,17 @@ def _menu_items(filter_json: dict[str, Any], place_revision: str) -> list[dict[s
             continue
         name = str(item.get("name") or "")
         menu_id = f"menu_{_short_hash(name + str(i) + place_revision)}"
-        result.append({
+        catalog_ref = item.get("beverage_catalog_ref") or None
+        entry = {
             "menu_item_id": menu_id,
             "menu_revision": f"mrev_{_short_hash(place_revision + str(i))}",
             "menu_name": name or f"Item {i + 1}",
             "status": "active",
-        })
+        }
+        if catalog_ref:
+            entry["beverage_catalog_ref"] = catalog_ref
+            entry["beverage_item_id"] = _resolve_beverage_item_id(catalog_ref)
+        result.append(entry)
     return result
 
 

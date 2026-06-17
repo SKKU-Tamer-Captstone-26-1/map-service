@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 import unittest
+import uuid
 from datetime import UTC, datetime
 from http import HTTPStatus
 
-from scripts.api.map_read_api import ApiError, MapReadApi, parse_marker_query
+from scripts.api.map_read_api import (
+    BEVERAGE_SEED_NAMESPACE,
+    ApiError,
+    MapReadApi,
+    _inventory_items,
+    _menu_items,
+    parse_marker_query,
+)
 
 
 class FakeRepository:
@@ -99,13 +107,69 @@ class MapReadApiTest(unittest.TestCase):
         self.assertEqual(payload["meta"]["count"], 1)
         self.assertEqual(payload["markers"][0]["placeRef"], "20000000-0000-4000-8000-000000000001")
         self.assertEqual(payload["markers"][0]["layerCode"], "pub")
-        self.assertEqual(payload["markers"][0]["filter"], {"fixture": True})
+        self.assertEqual(payload["markers"][0]["label"], "DEV 홍대 펍 샘플")
+        self.assertEqual(payload["markers"][0]["iconKey"], "beer")
+        self.assertEqual(payload["markers"][0]["visibility"], "visible")
+        self.assertEqual(payload["markers"][0]["menu"], [])
+        self.assertEqual(payload["markers"][0]["inventory"], [])
+        # The public marker contract never exposes the raw internal filter_json blob.
+        self.assertNotIn("filter", payload["markers"][0])
 
     def test_unknown_route_returns_not_found(self) -> None:
         with self.assertRaises(ApiError) as context:
             MapReadApi(FakeRepository()).handle("GET", "/missing", {})
         self.assertEqual(context.exception.status, HTTPStatus.NOT_FOUND)
         self.assertEqual(context.exception.code, "not_found")
+
+    def test_inventory_items_resolves_beverage_item_id_from_catalog_ref(self) -> None:
+        catalog_ref = "whiskey.buffalo_trace_bourbon"
+        expected_beverage_item_id = str(
+            uuid.uuid5(BEVERAGE_SEED_NAMESPACE, f"beverage:{catalog_ref}")
+        )
+        filter_json = {
+            "inventory": [
+                {"beverage_catalog_ref": catalog_ref, "name_ko": "버팔로 트레이스"},
+            ]
+        }
+        items = _inventory_items(filter_json, "rev_1")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["source_beverage_id"], catalog_ref)
+        self.assertEqual(items[0]["beverage_catalog_ref"], catalog_ref)
+        self.assertEqual(items[0]["beverage_item_id"], expected_beverage_item_id)
+
+    def test_inventory_items_without_catalog_ref_has_no_beverage_item_id(self) -> None:
+        filter_json = {
+            "inventory": [
+                {"source_beverage_id": "legacy-id", "name_ko": "이름"},
+            ]
+        }
+        items = _inventory_items(filter_json, "rev_1")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["source_beverage_id"], "legacy-id")
+        self.assertIsNone(items[0]["beverage_catalog_ref"])
+        self.assertIsNone(items[0]["beverage_item_id"])
+
+    def test_menu_items_resolves_beverage_item_id_from_catalog_ref(self) -> None:
+        catalog_ref = "whiskey.buffalo_trace_bourbon"
+        expected_beverage_item_id = str(
+            uuid.uuid5(BEVERAGE_SEED_NAMESPACE, f"beverage:{catalog_ref}")
+        )
+        filter_json = {
+            "menu": [
+                {"name": "버팔로 트레이스 한 잔", "beverage_catalog_ref": catalog_ref},
+            ]
+        }
+        items = _menu_items(filter_json, "rev_1")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["beverage_catalog_ref"], catalog_ref)
+        self.assertEqual(items[0]["beverage_item_id"], expected_beverage_item_id)
+
+    def test_menu_items_without_catalog_ref_omits_beverage_fields(self) -> None:
+        filter_json = {"menu": [{"name": "맥주"}]}
+        items = _menu_items(filter_json, "rev_1")
+        self.assertEqual(len(items), 1)
+        self.assertNotIn("beverage_catalog_ref", items[0])
+        self.assertNotIn("beverage_item_id", items[0])
 
 
 if __name__ == "__main__":
