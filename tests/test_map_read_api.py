@@ -113,6 +113,7 @@ class MapReadApiTest(unittest.TestCase):
         self.assertEqual(payload["markers"][0]["menu"], [])
         self.assertEqual(payload["markers"][0]["inventory"], [])
         # The public marker contract never exposes the raw internal filter_json blob.
+        self.assertNotIn("filter_json", payload["markers"][0])
         self.assertNotIn("filter", payload["markers"][0])
 
     def test_unknown_route_returns_not_found(self) -> None:
