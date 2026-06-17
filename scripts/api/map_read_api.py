@@ -467,10 +467,9 @@ def _inventory_items(filter_json: dict[str, Any], place_revision: str) -> list[d
     for item in items:
         if not isinstance(item, dict):
             continue
-        catalog_ref = item.get("beverage_catalog_ref") or None
-        source_id = str(
-            item.get("beverage_catalog_ref") or item.get("source_beverage_id") or item.get("name_ko") or ""
-        )
+        raw_catalog_ref = item.get("beverage_catalog_ref")
+        catalog_ref = raw_catalog_ref.strip() if isinstance(raw_catalog_ref, str) and raw_catalog_ref.strip() else None
+        source_id = str(catalog_ref or item.get("source_beverage_id") or item.get("name_ko") or "")
         inv_rev = f"inv_{_short_hash(source_id + place_revision)}"
         result.append({
             "inventory_revision": inv_rev,
