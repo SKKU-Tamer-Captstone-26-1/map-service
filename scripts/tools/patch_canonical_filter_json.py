@@ -36,12 +36,16 @@ PATCHES: list[dict] = [
             "open_time": "23:00",
             "close_time": "06:00",
             "description": "The latest close bar in Seoul",
-            "image_urls": [],
+            "image_urls": [
+                "https://storage.googleapis.com/on-the-block-place-media/places/055be570-86b9-547b-9972-8aa73e5326e3/2c2c0a55-8269-4046-99f0-9376ec4af738.png"
+            ],
             "menu": [
                 {"name": "Jameson Highball", "desc": "Jameson based highball", "price_krw": 11000,
                  "image_url": "https://storage.googleapis.com/on-the-block-place-media/menu/055be570-86b9-547b-9972-8aa73e5326e3/1f602f02-0480-431d-aedf-be8d8f374d85.jpg"},
-                {"name": "Jameson Shot",     "desc": "Jameson Shot",           "price_krw": 10000},
-                {"name": "Beer",             "desc": "Bottled Beer",           "price_krw": 10000},
+                {"name": "Jameson Shot",     "desc": "Jameson Shot",           "price_krw": 10000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-place-media/menu/055be570-86b9-547b-9972-8aa73e5326e3/3f039fc2-0877-4dc3-941b-493b76fa7356.jpg"},
+                {"name": "Beer",             "desc": "Bottled Beer",           "price_krw": 10000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-place-media/menu/055be570-86b9-547b-9972-8aa73e5326e3/1a82ff94-4aad-422c-83f8-93e01c055fd8.jpg"},
             ],
         },
         "remove": [],
@@ -133,13 +137,16 @@ PATCHES: list[dict] = [
         "set": {
             "open_time": "10:00",
             "close_time": "22:00",
-            "image_urls": [],
+            "image_urls": [
+                "https://storage.googleapis.com/on-the-block-place-media/places/86633237-8df0-5a5d-ac9a-ab4f91a35fff/949850ec-a05f-4da2-9c75-49bafced8a3d.jpg"
+            ],
             # beverage_id → recommendation-service.beverage_items.id (canonical)
             "inventory": [
                 {"beverage_id": "846aab49-a7d0-5bfb-b987-acf20abe8015",
                  "name_ko": "더 맥캘란 12년 더블 캐스크",
                  "name_en": "The Macallan 12 Years Double Cask",
-                 "price_krw": 128000},
+                 "price_krw": 128000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-product-media/whiskies/846aab49-a7d0-5bfb-b987-acf20abe8015/96f86ac8-5585-435d-9532-a3da8fb6ef40.png"},
                 {"beverage_id": "8c3dbc78-e8c9-5187-ad08-cf0b5416995d",
                  "name_ko": "글렌피딕 12년",
                  "name_en": "Glenfiddich 12 Year Old",
@@ -148,11 +155,13 @@ PATCHES: list[dict] = [
                 {"beverage_id": "d8ec2f75-f3b7-50b9-8be8-9dd8de031a54",
                  "name_ko": "라프로익 10년",
                  "name_en": "Laphroaig 10 Year Old",
-                 "price_krw": 119000},
+                 "price_krw": 119000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-product-media/whiskies/d8ec2f75-f3b7-50b9-8be8-9dd8de031a54/cf8c54d2-df3a-4909-8531-5f38a7ae1e58.jpg"},
                 {"beverage_id": "17efb137-cdbb-5ca1-8734-f5705b50081b",
                  "name_ko": "버팔로 트레이스 버번",
                  "name_en": "Buffalo Trace Bourbon",
-                 "price_krw": 89000},
+                 "price_krw": 89000,
+                 "image_url": "https://storage.googleapis.com/on-the-block-product-media/whiskies/17efb137-cdbb-5ca1-8734-f5705b50081b/113eb34a-28b3-47a6-8253-60868ce3d60e.png"},
                 {"beverage_id": "2ac1b120-0319-5017-bea6-65b443e50acf",
                  "name_ko": "제임슨 아이리시 위스키",
                  "name_en": "Jameson Irish Whiskey",
