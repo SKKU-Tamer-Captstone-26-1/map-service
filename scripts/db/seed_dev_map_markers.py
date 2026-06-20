@@ -54,11 +54,18 @@ DEV_MARKERS = [
         "id": "10000000-0000-4000-8000-000000000004",
         "place_ref": "20000000-0000-4000-8000-000000000004",
         "layer_code": "outdoor_spot",
-        "label": "DEV 망원 야외 장소 샘플",
+        "label": "망원 한강공원",
         "longitude": 126.8994,
         "latitude": 37.5558,
         "geohash": "wydm6",
-        "filter_json": {"fixture": True, "source": "local_dev_seed", "neighborhood": "mangwon"},
+        "filter_json": {
+            "fixture": True,
+            "source": "local_dev_seed",
+            "neighborhood": "mangwon",
+            "image_urls": [
+                "https://storage.googleapis.com/on-the-block-place-media/venues/20000000-0000-4000-8000-000000000004/hangang.jpg"
+            ],
+        },
         "published_revision": 1,
     },
     {
